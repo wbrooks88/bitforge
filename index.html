@@ -1,0 +1,1855 @@
+<title>Bitforge Mini Maker</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: workbench. Controls rail on the left, turntable viewport filling the rest; stacks on phones. */
+:root {
+  --bg: #e9ecf1;
+  --panel: #f7f8fa;
+  --ink: #1b2130;
+  --muted: #5b6577;
+  --line: #cfd5df;
+  --accent: #2f55d4;
+  --accent-ink: #ffffff;
+  --amber: #c9861a;
+  --stage: #d7dce5;
+  --font-display: "Silkscreen", "Courier New", monospace;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12151c; --panel: #1a1e27; --ink: #e6e9f0; --muted: #98a1b3; --line: #2c3240;
+    --accent: #6f8cff; --accent-ink: #0d1020; --amber: #e2a540; --stage: #0e1117; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12151c; --panel: #1a1e27; --ink: #e6e9f0; --muted: #98a1b3; --line: #2c3240;
+  --accent: #6f8cff; --accent-ink: #0d1020; --amber: #e2a540; --stage: #0e1117; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 14px; }
+.app { display: grid; grid-template-columns: 380px minmax(0, 1fr); height: 100%; }
+.rail { background: var(--panel); border-right: 1px solid var(--line); overflow-y: auto; padding-block: 18px 28px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: 16px; display: flex; flex-direction: column; gap: 18px; }
+.brand { display: flex; align-items: baseline; gap: 10px; }
+.brand h1 { font-family: var(--font-display); font-weight: 400; font-size: 22px; margin: 0; letter-spacing: 0.02em; }
+.brand span { color: var(--muted); font-size: 12px; }
+section { display: flex; flex-direction: column; gap: 10px; }
+h2 { font-family: var(--font-display); font-weight: 400; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0; }
+textarea, select, input[type="text"] { width: 100%; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 7px 9px; }
+textarea { resize: vertical; min-height: 64px; line-height: 1.45; }
+textarea:focus-visible, select:focus-visible, input:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; }
+label.f { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); min-width: 0; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+button { font: inherit; font-weight: 500; border-radius: 4px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); padding: 7px 12px; cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.swatches { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.sw { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); }
+.sw input { width: 100%; height: 30px; border: 1px solid var(--line); border-radius: 4px; padding: 2px; background: var(--bg); cursor: pointer; }
+.check { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.hint { font-size: 12px; color: var(--muted); line-height: 1.45; margin: 0; }
+.stage { position: relative; background: var(--stage); min-width: 0; min-height: 0; }
+#view { position: absolute; inset: 0; }
+#view canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.hud { position: absolute; left: 16px; top: max(14px, env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; pointer-events: none; }
+.plate { pointer-events: auto; background: color-mix(in srgb, var(--panel) 88%, transparent); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; }
+.stats { font-family: var(--font-mono); font-size: 12px; display: grid; grid-template-columns: auto auto; gap: 2px 14px; font-variant-numeric: tabular-nums; }
+.stats dt { color: var(--muted); } .stats dd { margin: 0; text-align: right; }
+.mini-name { font-family: var(--font-display); font-size: 15px; margin: 0 0 6px; }
+.tools { pointer-events: auto; display: flex; gap: 6px; flex-wrap: wrap; align-items: flex-start; }
+.export { position: absolute; left: 16px; right: max(16px, env(safe-area-inset-right, 0px)); bottom: max(16px, env(safe-area-inset-bottom, 0px)); display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; pointer-events: none; }
+.export > * { pointer-events: auto; }
+.toast { font-size: 12px; color: var(--muted); align-self: center; margin-right: auto; }
+.tag { font-family: var(--font-mono); font-size: 11px; color: var(--amber); }
+dialog.editor { border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); padding: 14px; width: min(760px, calc(100vw - 32px)); max-height: calc(100vh - 32px); }
+dialog.editor::backdrop { background: rgba(10, 12, 18, 0.55); }
+.ed-top { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+.ed-top h2 { margin-right: auto; }
+.ed-body { display: grid; grid-template-columns: minmax(0, 1fr) 170px; gap: 12px; }
+.ed-canvas { background: repeating-conic-gradient(color-mix(in srgb, var(--bg) 70%, var(--line)) 0 25%, var(--bg) 0 50%) 0 0 / 16px 16px; border: 1px solid var(--line); border-radius: 4px; overflow: auto; max-height: calc(100vh - 170px); display: flex; justify-content: center; }
+.ed-canvas canvas { display: block; touch-action: none; image-rendering: pixelated; cursor: crosshair; }
+.ed-side { display: flex; flex-direction: column; gap: 8px; }
+.ed-pal { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.ed-pal button { height: 30px; padding: 0; border-width: 2px; }
+.ed-pal button[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+@media (max-width: 620px) { .ed-body { grid-template-columns: 1fr; } }
+@media (max-width: 820px) {
+  .app { grid-template-columns: 1fr; grid-template-rows: 58vh auto; height: auto; }
+  .stage { order: -1; height: 58vh; }
+  .rail { border-right: 0; border-top: 1px solid var(--line); overflow: visible; padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .stats { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<dialog class="editor" id="editor" aria-label="Pixel editor">
+  <div class="ed-top">
+    <h2>Pixel editor</h2>
+    <div class="row seg"><button id="edFront" aria-pressed="true">Front</button><button id="edBack" aria-pressed="false">Back</button></div>
+  </div>
+  <div class="ed-body">
+    <div class="ed-canvas"><canvas id="edCanvas" width="10" height="10"></canvas></div>
+    <div class="ed-side">
+      <div class="row seg"><button id="edPen" aria-pressed="true">Paint</button><button id="edErase" aria-pressed="false">Erase</button><button id="edFill" aria-pressed="false">Fill</button></div>
+      <label class="check"><input type="checkbox" id="edMirror"> Mirror left/right</label>
+      <div class="ed-pal" id="edPal"></div>
+      <p class="hint" id="edSlot">Black</p>
+      <div class="row"><button id="edUndo">Undo</button><button id="edReset">Reset</button></div>
+      <p class="hint">The black outline is added around the edge automatically. New pixels are added to both sides so the front and back keep the same shape. Pixels that don't touch the figure are dropped when printing.</p>
+      <div class="row"><button class="primary" id="edDone">Use this</button><button id="edCancel">Cancel</button></div>
+    </div>
+  </div>
+</dialog>
+<div class="app">
+  <aside class="rail">
+    <div class="brand"><h1>Bitforge</h1><span>voxel minis for 3D printing</span></div>
+
+    <section>
+      <h2>Describe your hero</h2>
+      <textarea id="desc" rows="3">A dwarf cleric with a red cloak, a hammer and a shield</textarea>
+      <div class="row">
+        <button class="primary" id="fromText">Build from text</button>
+        <button id="random">Random hero</button>
+      </div>
+      <p class="hint">Try words like race (elf, orc, tiefling), class (ranger, wizard), monsters (skeleton, zombie, cultist, lich), gear (axe, bow, torch, hood, crown) and colors ("blue robe", "blonde hair", "silver armor").</p>
+    </section>
+
+    <section>
+      <h2>Character</h2>
+      <label class="f">Name<input type="text" id="name" value="Bromli"></label>
+      <div class="grid2">
+        <label class="f">Figure<select id="tpl"></select></label>
+        <label class="f" id="raceRow">Race<select id="race"></select></label>
+      </div>
+      <div id="uploadRow" hidden>
+        <label class="f">Your pixel art (PNG with transparent background)<input type="file" id="upFile" accept="image/png,image/gif,image/webp"></label>
+        <p class="hint" id="upInfo">Upscaled art is detected and shrunk back to its real pixels. Near-black pixels become the black plate; up to 120×120 pixels.</p>
+      </div>
+      <div class="row"><button id="editPx">Edit pixels</button><span class="hint">Paint over any figure, front and back.</span></div>
+      <div id="builderFields" hidden>
+      <div class="grid2">
+        <label class="f">Class<select id="cls"></select></label>
+        <label class="f">Outfit<select id="outfit"></select></label>
+        <label class="f">Headgear<select id="head"></select></label>
+        <label class="f">Main hand<select id="weapon"></select></label>
+        <label class="f">Off hand<select id="offhand"></select></label>
+        <label class="f">Hair<select id="hair"></select></label>
+        <label class="f">Beard<select id="beard"></select></label>
+      </div>
+      <label class="check"><input type="checkbox" id="cape"> Cape</label>
+      </div>
+    </section>
+
+    <section>
+      <h2>Colors</h2>
+      <div class="swatches" id="swatches"></div>
+      <label class="check" id="shadingRow"><input type="checkbox" id="shading"> Pixel shading (adds a light and dark tone per color)</label>
+      <label class="check"><input type="checkbox" id="backColor"> Color the back too</label>
+      <p class="hint">Very dark colors are lifted automatically so they don't disappear into the black outline, and blades print a shade brighter than armor.</p>
+    </section>
+
+    <section>
+      <h2>Print settings</h2>
+      <div class="grid2">
+        <label class="f">Scale<select id="scale">
+          <option value="28">28mm heroic</option><option value="32">32mm</option><option value="54">54mm display</option></select></label>
+        <label class="f">Base<select id="baseShape"><option value="round">Round</option><option value="square">Square</option><option value="hex">Hex</option><option value="none">No base</option></select></label>
+        <label class="f">Base size<select id="baseSize"><option value="25">25mm (1")</option><option value="32">32mm</option><option value="40">40mm</option><option value="50">50mm (2")</option></select></label>
+        <label class="f">Base height<select id="baseH"><option value="4">4mm</option><option value="5">5mm</option><option value="6">6mm</option></select></label>
+        <label class="f">Max colors<select id="maxColors"><option value="all">No limit</option><option value="8">8 (incl. black)</option><option value="5">5 (incl. black, tuned)</option><option value="4">4 (one AMS)</option><option value="3">3</option><option value="2">2</option></select></label>
+        <label class="f">Click fit<select id="fit"><option value="tight">Tight (0.10mm)</option><option value="normal">Normal (0.15mm)</option><option value="loose">Loose (0.25mm)</option></select></label>
+      </div>
+      <p class="hint">Minis are flat pixel standees: a black outline plate with the colored pixels raised a few layers on the front. Print the figure lying on its back (colors only change in the top layers), then click its tab into the slot in the base. Files are in millimetres, Z up; 3MF and OBJ keep colors for multi-material printers.</p>
+    </section>
+  </aside>
+
+  <main class="stage">
+    <div id="view"></div>
+    <div class="hud">
+      <div class="plate">
+        <p class="mini-name" id="title">Bromli</p>
+        <dl class="stats" id="stats"></dl>
+      </div>
+      <div class="tools">
+        <button id="spin" aria-pressed="true">Spin</button>
+        <button id="mono" aria-pressed="false">Print gray</button>
+        <button id="layout" aria-pressed="false">Print layout</button>
+      </div>
+    </div>
+    <div class="export">
+      <span class="toast" id="toast"></span>
+      <button id="dlFit" title="Small test pieces to find the click fit that suits your printer">Fit test kit</button>
+      <button id="dlStl">STL</button>
+      <button id="dl3mf">3MF</button>
+      <button id="dlObj">OBJ</button>
+      <button class="primary" id="dlZip">Download all (.zip)</button>
+    </div>
+  </main>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+/* ---------------- Data ---------------- */
+const RACES = {
+  human:      { label: "Human",      legH: 8, torsoH: 8, hw: 4, skin: "#e0ac8a" },
+  elf:        { label: "Elf",        legH: 9, torsoH: 8, hw: 4, skin: "#f0caa8", ears: true },
+  dwarf:      { label: "Dwarf",      legH: 5, torsoH: 8, hw: 5, skin: "#d9a07a", beard: "long" },
+  halfling:   { label: "Halfling",   legH: 5, torsoH: 6, hw: 4, skin: "#e8b896" },
+  gnome:      { label: "Gnome",      legH: 4, torsoH: 6, hw: 4, skin: "#f0c4a0", nose: true },
+  orc:        { label: "Orc",        legH: 8, torsoH: 9, hw: 5, skin: "#6f9a4a", tusks: true },
+  tiefling:   { label: "Tiefling",   legH: 8, torsoH: 8, hw: 4, skin: "#c0444a", horns: true },
+  dragonborn: { label: "Dragonborn", legH: 8, torsoH: 9, hw: 5, skin: "#3f7fa8", snout: true },
+};
+const CLASSES = {
+  fighter:   { label: "Fighter",   weapon: "sword",  offhand: "shield", outfit: "plate",   head: "helmet", cape: false, primary: "#8a2f2f", secondary: "#d9c27a" },
+  barbarian: { label: "Barbarian", weapon: "axe",    offhand: "none",   outfit: "bare",    head: "horned", cape: false, primary: "#6b4a2e", secondary: "#a33b2a" },
+  wizard:    { label: "Wizard",    weapon: "staff",  offhand: "none",   outfit: "robe",    head: "wizard", cape: false, primary: "#35408f", secondary: "#e2c15a" },
+  cleric:    { label: "Cleric",    weapon: "mace",   offhand: "shield", outfit: "robe",    head: "none",   cape: true,  primary: "#e8e2d0", secondary: "#c2a33a" },
+  rogue:     { label: "Rogue",     weapon: "dagger", offhand: "dagger", outfit: "leather", head: "hood",   cape: true,  primary: "#5d6878", secondary: "#7a2e3a" },
+  ranger:    { label: "Ranger",    weapon: "bow",    offhand: "none",   outfit: "leather", head: "hood",   cape: true,  primary: "#3f6b3a", secondary: "#5b4630" },
+  paladin:   { label: "Paladin",   weapon: "hammer", offhand: "shield", outfit: "plate",   head: "none",   cape: true,  primary: "#2f4f9a", secondary: "#e6d9a8" },
+};
+const OPTS = {
+  outfit: { plate: "Plate armor", leather: "Leather", robe: "Robes", bare: "Bare chest" },
+  head: { none: "None", helmet: "Helmet", horned: "Horned helm", wizard: "Wizard hat", hood: "Hood", crown: "Crown", cap: "Feathered cap" },
+  weapon: { sword: "Sword", axe: "Axe", hammer: "Warhammer", mace: "Mace", staff: "Staff", spear: "Spear", dagger: "Dagger", bow: "Bow (both hands)", none: "Empty" },
+  offhand: { none: "Empty", shield: "Shield", dagger: "Dagger", torch: "Torch" },
+  hair: { short: "Short", long: "Long", mohawk: "Mohawk", none: "Bald" },
+  beard: { none: "None", short: "Short", long: "Long" },
+};
+const COLOR_SLOTS = [
+  ["skin", "Skin"], ["hair", "Hair"], ["primary", "Clothes"], ["secondary", "Trim/cape"],
+  ["metal", "Metal"], ["leather", "Leather"], ["trim", "Gold/trim"], ["bone", "Bone"], ["gem", "Magic"], ["base", "Base"],
+];
+const FIXED = { ink: "#141318", eye: "#16171d", bone: "#ece3c8", wood: "#7a4f2c", flame: "#ff8a1e", flame2: "#ffd84a", gold: "#e2b440", white: "#f2f2f2", edge: "#e6edf5", sole: "#2b2522" };
+
+const state = {
+  name: "Bromli", race: "dwarf", cls: "cleric", outfit: "robe", head: "none", weapon: "hammer", offhand: "shield",
+  hair: "short", beard: "long", cape: true,
+  colors: { skin: "#d9a07a", hair: "#8a4a22", primary: "#e8e2d0", secondary: "#a8262b", metal: "#a9b0bb", leather: "#6b4428", gem: "#59d0ff", trim: "#e2b440", bone: "#ece3c8", base: "#4a4f5a" },
+  tpl: "cleric", scale: "28", baseShape: "round", baseSize: "25", baseH: "4", fit: "normal", maxColors: "5", shading: false, backColor: true,
+};
+
+/* ---------------- Voxel grid ---------------- */
+class Grid {
+  constructor(u = 1) { this.m = new Map(); this.u = u; }
+  k(x, y, z) { return (x + 128) * 262144 + (y + 64) * 512 + (z + 128); }
+  fset(x, y, z, c) { this.m.set(this.k(x, y, z), c); }
+  fget(x, y, z) { return this.m.get(this.k(x, y, z)); }
+  fhas(x, y, z) { return this.m.has(this.k(x, y, z)); }
+  fdel(x, y, z) { this.m.delete(this.k(x, y, z)); }
+  _r(a, b) { if (a > b) [a, b] = [b, a]; return [a * this.u, b * this.u + this.u - 1]; }
+  // Coarse API: one coarse cell covers u x u x u fine cells
+  box(x0, x1, y0, y1, z0, z1, c) {
+    const [a, b] = this._r(x0, x1), [p, q] = this._r(y0, y1), [r, t] = this._r(z0, z1);
+    for (let x = a; x <= b; x++) for (let y = p; y <= q; y++) for (let z = r; z <= t; z++) this.fset(x, y, z, c);
+  }
+  recolor(x0, x1, y0, y1, z0, z1, c) {
+    const [a, b] = this._r(x0, x1), [p, q] = this._r(y0, y1), [r, t] = this._r(z0, z1);
+    for (let x = a; x <= b; x++) for (let y = p; y <= q; y++) for (let z = r; z <= t; z++) if (this.fhas(x, y, z)) this.fset(x, y, z, c);
+  }
+  set(x, y, z, c) { this.box(x, x, y, y, z, z, c); }
+  del(x, y, z) { const u = this.u; for (let a = 0; a < u; a++) for (let b = 0; b < u; b++) for (let c = 0; c < u; c++) this.fdel(x * u + a, y * u + b, z * u + c); }
+  has(x, y, z) { return this.fhas(x * this.u, y * this.u, z * this.u); }
+  get(x, y, z) { return this.fget(x * this.u, y * this.u, z * this.u); }
+  *cells() { for (const [k, c] of this.m) { const x = Math.floor(k / 262144) - 128, r = k % 262144, y = Math.floor(r / 512) - 64, z = (r % 512) - 128; yield [x, y, z, c]; } }
+  bounds() {
+    let b = [1e9, -1e9, 1e9, -1e9, 1e9, -1e9];
+    for (const [x, y, z] of this.cells()) { b[0] = Math.min(b[0], x); b[1] = Math.max(b[1], x); b[2] = Math.min(b[2], y); b[3] = Math.max(b[3], y); b[4] = Math.min(b[4], z); b[5] = Math.max(b[5], z); }
+    return b;
+  }
+}
+
+/* ---------------- Pixel sprite ----------------
+   Characters are drawn as a 2D pixel sprite (front view), back to front, one "part" at a time.
+   Afterwards: parts get inked outlines where a later part overlaps an earlier one, 3-tone shading,
+   and a 1-pixel black outline around the whole silhouette. x columns are symmetric about 0. */
+const SPRITE = {
+  human:      { L: 18, T: 16, sw: 7, hip: 6, hw: 5, hh: 12 },
+  elf:        { L: 20, T: 16, sw: 6, hip: 5, hw: 5, hh: 12 },
+  dwarf:      { L: 10, T: 15, sw: 9, hip: 8, hw: 6, hh: 12 },
+  halfling:   { L: 11, T: 12, sw: 6, hip: 5, hw: 5, hh: 11 },
+  gnome:      { L: 9,  T: 11, sw: 6, hip: 5, hw: 6, hh: 12 },
+  orc:        { L: 18, T: 18, sw: 9, hip: 7, hw: 6, hh: 12 },
+  tiefling:   { L: 18, T: 16, sw: 7, hip: 6, hw: 5, hh: 12 },
+  dragonborn: { L: 18, T: 17, sw: 8, hip: 7, hw: 6, hh: 12 },
+};
+// Keep the filament count low: small details reuse the main colors.
+const ALIAS = { eye: "ink", mouth: "ink", edge: "blade", sole: "leather", gold: "trim", wood: "leather", flame2: "flame", white: "metal" };
+function buildSprite(s, back = false) {
+  const { L, T, sw, hip, hw, hh } = SPRITE[s.race];
+  const R = RACES[s.race];
+  const tb = L, tt = L + T - 1, hb = tt + 1, ht = hb + hh - 1, eyeY = hb + Math.floor(hh * 0.42);
+  const px = new Map(), parts = [];
+  let cur = null;
+  const key = (x, y) => (x + 500) * 2000 + (y + 500);
+  const part = (name, o = {}) => { cur = { id: parts.length, name, ink: o.ink !== false, shade: o.shade || 0, flat: !!o.flat }; parts.push(cur); return cur; };
+  const plot = (x, y, m) => px.set(key(x, y), { x, y, m, p: cur });
+  const get = (x, y) => px.get(key(x, y));
+  const erase = (x, y) => px.delete(key(x, y));
+  // drawing helpers in "right-hand" coordinates; side -1 mirrors x -> -1 - x
+  const mk = side => {
+    const X = x => side > 0 ? x : -1 - x;
+    const P = (x, y, m) => plot(X(x), y, m);
+    const rect = (x0, x1, y0, y1, m) => { if (x0 > x1) [x0, x1] = [x1, x0]; if (y0 > y1) [y0, y1] = [y1, y0]; for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) P(x, y, m); };
+    const poly = (pts, m) => {
+      const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+      for (let x = Math.floor(Math.min(...xs)); x <= Math.ceil(Math.max(...xs)); x++) for (let y = Math.floor(Math.min(...ys)); y <= Math.ceil(Math.max(...ys)); y++) {
+        const cx = x + 0.5, cy = y + 0.5; let inside = false;
+        for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [xi, yi] = pts[i], [xj, yj] = pts[j]; if ((yi > cy) !== (yj > cy) && cx < (xj - xi) * (cy - yi) / (yj - yi) + xi) inside = !inside; }
+        if (inside) P(x, y, m);
+      }
+    };
+    const line = (x0, y0, x1, y1, m, w = 1) => {
+      const dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1; let e = dx + dy;
+      for (;;) { for (let k = 0; k < w; k++) P(x0 + k, y0, m); if (x0 === x1 && y0 === y1) break; const e2 = 2 * e; if (e2 >= dy) { e += dy; x0 += sx; } if (e2 <= dx) { e += dx; y0 += sy; } }
+    };
+    const disc = (cx, cy, r, m) => { for (let x = Math.floor(cx - r - 1); x <= cx + r + 1; x++) for (let y = Math.floor(cy - r - 1); y <= cy + r + 1; y++) if (Math.hypot(x + 0.5 - cx, y + 0.5 - cy) <= r) P(x, y, m); };
+    return { X, P, rect, poly, line, disc };
+  };
+  const D = mk(1);
+  const sides = [1, -1];
+  const outfit = s.outfit;
+  const torsoC = outfit === "plate" ? "metal" : outfit === "bare" ? "skin" : "primary";
+  const legC = outfit === "plate" ? "metal" : outfit === "bare" ? "primary" : "secondary";
+  const armC = outfit === "plate" ? "metal" : outfit === "bare" ? "skin" : "primary";
+  const covered = ["helmet", "horned", "hood"].includes(s.head);
+  const hx = sw + 1, hy = L - 1;
+
+  // --- held items (drawn in right-hand coordinates, mirrored for the off hand)
+  const item = (it, sd) => {
+    const S = mk(sd);
+    switch (it) {
+      case "sword":
+        part("grip"); S.rect(hx, hx + 1, hy - 2, hy + 1, "leather"); S.rect(hx, hx + 1, hy - 3, hy - 3, "gold");
+        part("blade"); S.rect(hx, hx + 1, hy + 3, hy + 17, "edge"); S.P(hx, hy + 18, "edge");
+        part("guard"); S.rect(hx - 2, hx + 3, hy + 2, hy + 2, "gold"); break;
+      case "axe":
+        part("haft"); S.rect(hx, hx + 1, hy - 4, hy + 15, "wood");
+        part("axehead"); S.poly([[hx + 2, hy + 10], [hx + 5, hy + 9], [hx + 7.5, hy + 7], [hx + 7.5, hy + 18], [hx + 5, hy + 16], [hx + 2, hy + 15]], "metal");
+        S.rect(hx - 2, hx - 1, hy + 12, hy + 13, "metal"); break;
+      case "hammer":
+        part("haft"); S.rect(hx, hx + 1, hy - 3, hy + 12, "wood");
+        part("hammerhead"); S.rect(hx - 3, hx + 4, hy + 12, hy + 16, "metal"); break;
+      case "mace":
+        part("haft"); S.rect(hx, hx + 1, hy - 2, hy + 9, "wood");
+        part("macehead"); S.disc(hx + 1, hy + 12.5, 3.1, "metal"); S.P(hx - 3, hy + 12, "metal"); S.P(hx + 4, hy + 12, "metal"); S.rect(hx, hx + 1, hy + 16, hy + 16, "metal"); break;
+      case "staff":
+        part("staff"); S.rect(hx, hx + 1, 0, ht + 2, "wood"); S.P(hx - 1, ht + 3, "wood"); S.P(hx + 2, ht + 3, "wood");
+        part("orb"); S.disc(hx + 1, ht + 5.5, 2.8, "gem"); break;
+      case "spear":
+        part("shaft"); S.rect(hx, hx + 1, 0, ht + 3, "wood");
+        part("spearhead"); S.poly([[hx - 1, ht + 4], [hx + 3, ht + 4], [hx + 1, ht + 11]], "edge"); break;
+      case "dagger":
+        part("grip"); S.rect(hx, hx + 1, hy - 2, hy + 1, "leather");
+        part("blade"); S.rect(hx, hx + 1, hy + 3, hy + 7, "edge"); S.P(hx, hy + 8, "edge");
+        part("guard"); S.rect(hx - 1, hx + 2, hy + 2, hy + 2, "gold"); break;
+      case "torch":
+        part("handle"); S.rect(hx, hx + 1, hy - 3, hy + 5, "wood");
+        part("flame"); S.poly([[hx - 1.5, hy + 6], [hx + 3.5, hy + 6], [hx + 2.8, hy + 10], [hx + 1, hy + 13.5], [hx - 0.8, hy + 9.5]], "flame");
+        part("flamecore", { ink: false }); S.rect(hx, hx + 1, hy + 7, hy + 9, "flame2"); break;
+      case "shield":
+        part("shield"); S.poly([[sw - 5, L + 9.5], [sw + 4, L + 9.5], [sw + 4, L - 1], [sw - 0.5, L - 7.5], [sw - 5, L - 1]], "metal");
+        if (back) { part("shieldback"); S.poly([[sw - 3, L + 7.5], [sw + 2, L + 7.5], [sw + 2, L - 0.5], [sw - 0.5, L - 5], [sw - 3, L - 0.5]], "wood"); part("strap"); S.rect(sw - 4, sw + 3, L + 1, L + 2, "leather"); break; }
+        part("field"); S.poly([[sw - 3, L + 7.5], [sw + 2, L + 7.5], [sw + 2, L - 0.5], [sw - 0.5, L - 5], [sw - 3, L - 0.5]], "primary");
+        part("emblem", { ink: false }); S.rect(sw - 1, sw, L - 2, L + 6, "secondary"); S.rect(sw - 2, sw + 1, L + 3, L + 4, "secondary"); break;
+      case "bow": {
+        const y0 = Math.max(0, hy - 12), y1 = hy + 12;
+        part("string", { ink: false }); S.rect(sw + 3, sw + 3, y0, y1, "white");
+        part("bow"); let px0 = null;
+        for (let y = y0; y <= y1; y++) { const t = (y - hy) / 12, x = sw + 3 + Math.round(3.2 * (1 - t * t)); S.P(x, y, "wood"); S.P(x + 1, y, "wood"); if (px0 !== null && Math.abs(px0 - x) > 1) S.line(px0, y - 1, x, y, "wood"); px0 = x; }
+        break;
+      }
+    }
+  };
+  const drawItems = () => { if (s.weapon === "bow") item("bow", -1); else { item(s.weapon, 1); item(s.offhand, -1); } };
+  if (back) drawItems();
+
+  // --- back layer
+  const drawQuiver = () => {
+    part("quiver"); D.line(-sw + 2, tb + 2, sw - 2, tt + 4, "leather", 3);
+    part("arrows", { ink: false }); for (const [x, y] of [[sw - 2, tt + 6], [sw - 1, tt + 6], [sw - 3, tt + 5], [sw, tt + 5]]) D.P(x, y, "white");
+  };
+  const hasQuiver = s.cls === "ranger" || s.weapon === "bow";
+  if (hasQuiver && !back) drawQuiver();
+  const drawCape = () => { part("cape", { shade: back ? 0 : -1 }); D.poly([[-sw, tt + 1], [sw, tt + 1], [sw + 6, 1], [sw + 3, 0], [1, 1], [-sw - 3, 0], [-sw - 2, 4]], "secondary"); };
+  if (s.cape && !back) drawCape();
+  const drawHoodBack = () => {
+    part("hoodBack", { shade: back ? 0 : -1 });
+    D.rect(-hw - 2, hw + 1, hb - 1, ht + 1, "secondary"); D.rect(-hw, hw - 1, ht + 2, ht + 2, "secondary"); D.rect(-3, 2, ht + 3, ht + 3, "secondary"); D.rect(-1, 0, ht + 4, ht + 4, "secondary");
+  };
+  if (s.head === "hood" && !back) drawHoodBack();
+  else if (s.hair === "long" && !covered && !back) { part("hairBack", { shade: -1 }); D.rect(-hw - 1, hw, tt - 5, ht - 2, "hair"); }
+
+  // --- legs
+  if (outfit === "robe") {
+    part("feet"); D.rect(-hip + 1, -1, 0, 1, "leather"); D.rect(0, hip - 2, 0, 1, "leather");
+    const skirt = part("skirt"); D.poly([[-hip, L], [hip, L], [hip + 2, 1], [-hip - 2, 1]], "primary");
+    part("hem"); for (let x = -hip - 3; x <= hip + 2; x++) for (let y = 1; y <= 2; y++) if (get(x, y)?.p === skirt) plot(x, y, "secondary");
+  } else {
+    const bootC = s.race === "halfling" ? "skin" : "leather";
+    for (const sd of sides) {
+      const S = mk(sd);
+      part("leg"); S.rect(0, hip - 1, 0, L - 1, legC);
+      part("boot"); S.rect(0, hip - 1, 0, Math.min(3, L - 3), bootC); S.rect(hip, hip, 0, 1, bootC);
+    }
+  }
+  if (s.weapon === "staff" || s.weapon === "spear") { /* shaft drawn later, in front */ }
+
+  // --- torso
+  part("torso");
+  const halfAt = y => Math.round(hip + (sw - hip) * (y - tb) / Math.max(1, T - 1));
+  for (let y = tb; y <= tt; y++) { const h = halfAt(y); D.rect(-h, h - 1, y, y, torsoC); }
+  if (outfit === "leather" && !back) for (const sd of sides) { part("vest"); const S = mk(sd); for (let y = tb + 2; y <= tt; y++) S.rect(1, halfAt(y) - 1, y, y, "secondary"); }
+  if (outfit === "plate" && !back) { part("breastplate"); D.rect(-hip + 1, hip - 2, tb + Math.floor(T / 2), tt - 1, "metal"); }
+  if (outfit === "bare") { part("strap"); D.line(-sw + 1, tt - 1, hip - 3, tb + 2, "leather", 2); }
+  if (outfit === "robe" && !back) { part("trim"); D.rect(-1, 0, 3, tt, "secondary"); part("collar"); D.rect(-3, 2, tt, tt, "secondary"); D.rect(-2, 1, tt - 1, tt - 1, "secondary"); }
+  if ((s.cls === "cleric" || s.cls === "paladin") && outfit !== "bare" && !back) {
+    part("tabard"); D.rect(-3, 2, Math.max(2, L - 6), tt - 2, "secondary");
+    const cy = tb + Math.floor(T / 2);
+    part("emblem", { ink: false }); D.rect(-1, 0, cy - 2, cy + 3, "gold"); D.rect(-2, 1, cy + 1, cy + 1, "gold");
+  }
+  part("belt"); D.rect(-hip, hip - 1, tb, tb + 1, outfit === "robe" ? "secondary" : "leather");
+  if (outfit !== "robe" && !back) { part("buckle", { ink: false }); D.rect(-1, 0, tb, tb + 1, "gold"); }
+
+  // --- arms
+  for (const sd of sides) { const S = mk(sd); part("arm"); S.rect(sw, sw + 2, L + 1, tt, armC); if (outfit === "robe") S.rect(sw - 1, sw + 3, L + 1, L + 2, armC); }
+  if (outfit === "plate") for (const sd of sides) { part("pauldron"); mk(sd).disc(sw + 1, tt + 0.5, 2.7, "metal"); }
+  if (s.head === "hood") { part("mantle"); D.poly([[-sw - 1.5, tt - 1], [sw + 1.5, tt - 1], [sw + 0.5, tt + 2], [-sw - 0.5, tt + 2]], "secondary"); }
+  if (s.cape && back) { drawCape(); if (hasQuiver) drawQuiver(); } else if (hasQuiver && back) drawQuiver();
+  if (s.cape && !back) { part("clasp", { ink: false }); D.P(-sw + 1, tt, "gold"); D.P(sw - 2, tt, "gold"); }
+
+  if (!back) drawItems();
+  for (const sd of sides) { if (sd < 0 && s.offhand === "shield" && s.weapon !== "bow") continue; part("hand"); mk(sd).rect(sw, sw + 2, L - 2, L, "skin"); }
+
+  // --- head
+  part("head", { shade: s.head === "hood" ? -1 : 0 });
+  D.rect(-hw, hw - 1, hb, ht, "skin"); for (const [x, y] of [[-hw, hb], [hw - 1, hb], [-hw, ht], [hw - 1, ht]]) erase(x, y);
+  if (R.ears) for (const sd of sides) { part("ear"); const S = mk(sd); for (const [x, y] of [[hw, eyeY], [hw, eyeY + 1], [hw + 1, eyeY + 1], [hw + 1, eyeY + 2], [hw + 2, eyeY + 2], [hw + 2, eyeY + 3]]) S.P(x, y, "skin"); }
+  if (R.snout && !back) { part("snout"); D.rect(-3, 2, hb - 1, hb + 3, "skin"); part("nostril", { ink: false }); D.P(-2, hb + 2, "eye"); D.P(1, hb + 2, "eye"); }
+  if (R.nose && !back) { part("nose"); D.rect(-1, 0, eyeY - 3, eyeY - 1, "skin"); D.rect(-2, 1, eyeY - 2, eyeY - 2, "skin"); }
+  if (!back) {
+  part("eyes", { ink: false });
+  const eyeC = s.race === "tiefling" ? "gem" : "eye";
+  for (const x of [-3, 2]) { D.P(x, eyeY, eyeC); D.P(x, eyeY + 1, eyeC); }
+  }
+  if (s.beard === "none" && !R.snout && !back) { part("mouth", { ink: false }); D.rect(-1, 0, hb + 2, hb + 2, "mouth"); }
+  if (R.tusks && !back) { part("tusks", { ink: false }); for (const x of [-3, 2]) { D.P(x, hb + 1, "bone"); D.P(x, hb + 2, "bone"); } }
+  if (s.beard !== "none" && !back) {
+    part("beard");
+    D.rect(-hw, hw - 1, hb - 1, eyeY - 2, "hair"); D.rect(-hw + 1, hw - 2, hb - 3, hb - 2, "hair"); D.rect(-hw + 2, hw - 3, hb - 4, hb - 4, "hair");
+    if (s.beard === "long") for (let i = 0; i < 6; i++) { const w = Math.max(1, hw - 2 - Math.floor(i / 2)); D.rect(-w, w - 1, hb - 5 - i, hb - 5 - i, "hair"); }
+    part("mouth", { ink: false }); D.rect(-1, 0, hb + 1, hb + 1, "mouth");
+  }
+  if (back && s.head === "hood") drawHoodBack();
+  if (back && s.hair !== "none" && !covered) {
+    part("hair");
+    if (s.hair === "mohawk") D.rect(-1, 0, hb + 3, ht + 4, "hair");
+    else D.rect(-hw - 1, hw, s.hair === "long" ? tt - 5 : hb + 2, ht + 1, "hair");
+  }
+  if (s.hair !== "none" && !covered && !back) {
+    part("hair");
+    if (s.hair === "mohawk") { D.rect(-1, 0, ht - 1, ht + 4, "hair"); D.rect(-2, 1, ht + 1, ht + 3, "hair"); }
+    else {
+      D.rect(-hw - 1, hw, ht - 1, ht + 1, "hair");
+      for (let x = -hw; x <= hw - 1; x++) if (((x % 3) + 3) % 3 !== 1) D.P(x, ht - 2, "hair");
+      const low = s.hair === "long" ? tt - 4 : eyeY + 1;
+      D.rect(-hw - 1, -hw, low, ht, "hair"); D.rect(hw - 1, hw, low, ht, "hair");
+    }
+  }
+  if ((s.hair !== "none" || s.beard !== "none") && !back) { part("brows", { ink: false }); D.rect(-4, -3, eyeY + 2, eyeY + 2, "hair"); D.rect(2, 3, eyeY + 2, eyeY + 2, "hair"); }
+
+  // --- headgear
+  if (s.head === "helmet" || s.head === "horned") {
+    part("helmet"); D.rect(-hw - 1, hw, eyeY + 2, ht + 1, "metal"); erase(-hw - 1, ht + 1); erase(hw, ht + 1);
+    D.rect(-hw - 1, -hw, hb + 1, eyeY + 1, "metal"); D.rect(hw - 1, hw, hb + 1, eyeY + 1, "metal");
+    if (back) D.rect(-hw - 1, hw, hb + 1, ht, "metal");
+    if (!R.snout && !back) { part("noseguard"); D.rect(-1, 0, eyeY - 2, eyeY + 2, "metal"); }
+    if (s.head === "helmet") { part("crest"); D.rect(-1, 0, ht + 2, ht + 3, "secondary"); }
+    else for (const sd of sides) { part("horn"); const S = mk(sd); S.line(hw + 1, ht - 1, hw + 3, ht + 1, "bone", 2); S.line(hw + 3, ht + 1, hw + 4, ht + 5, "bone", 2); }
+  } else if (s.head === "hood" && !back) {
+    part("hoodFront");
+    D.rect(-hw - 1, hw, ht - 1, ht + 1, "secondary"); D.rect(-hw - 1, -hw, hb, ht, "secondary"); D.rect(hw - 1, hw, hb, ht, "secondary");
+    D.rect(-hw, hw - 1, ht + 2, ht + 2, "secondary"); D.rect(-3, 2, ht + 3, ht + 3, "secondary"); D.rect(-1, 0, ht + 4, ht + 4, "secondary");
+  } else if (s.head === "wizard") {
+    const top = s.hair !== "none" ? ht + 1 : ht;
+    part("hat");
+    for (let i = 0; i < 14; i++) { const half = Math.max(1, Math.round(hw - i * (hw - 1) / 10)), cx = -Math.floor(Math.max(0, i - 7) / 1.5); D.rect(cx - half, cx + half - 1, top + 3 + i, top + 3 + i, "primary"); }
+    part("band"); D.rect(-hw, hw - 1, top + 3, top + 4, "secondary");
+    part("brim"); D.rect(-hw - 4, hw + 3, top + 1, top + 2, "primary");
+  } else if (s.head === "crown") {
+    const top = s.hair !== "none" ? ht + 1 : ht;
+    part("crown"); D.rect(-hw, hw - 1, top + 1, top + 2, "gold"); for (const x of [-hw, -1, 0, hw - 1]) D.P(x, top + 3, "gold");
+    part("jewel", { ink: false }); D.rect(-1, 0, top + 1, top + 1, "gem");
+  } else if (s.head === "cap") {
+    const top = s.hair !== "none" ? ht + 1 : ht;
+    part("cap"); D.rect(-hw - 1, hw + 1, top, top + 2, "primary"); D.rect(-hw + 1, hw, top + 3, top + 3, "primary");
+    part("feather"); D.line(hw - 1, top + 3, hw + 3, top + 9, "secondary", 2);
+  }
+  if (R.horns) for (const sd of sides) { part("horn"); const S = mk(sd); const t0 = covered || s.head !== "none" ? ht + 2 : ht + 1; S.line(hw - 2, t0, hw, t0 + 3, "bone", 2); S.line(hw, t0 + 3, hw - 1, t0 + 5, "bone", 2); }
+  if (R.snout) for (const sd of sides) { part("crest"); mk(sd).line(hw - 1, ht, hw + 2, ht + 3, "bone", 1); }
+
+  // --- ink: a part's pixel turns into an outline where a later (overlapping) part touches it
+  const out = new Map();
+  for (const [k, q] of px) {
+    let ink = false;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const n = get(q.x + dx, q.y + dy); if (n && n.p !== q.p && n.p.id > q.p.id && n.p.ink) { ink = true; break; } }
+    out.set(k, { x: q.x, y: q.y, m: ink ? "ink" : (ALIAS[q.m] || q.m), p: q.p });
+  }
+  // --- 3-tone shading: light from the upper left
+  if (s.shading) for (const q of out.values()) {
+    if (q.m === "ink" || !q.p.ink) continue;
+    const same = (dx, dy) => { const n = out.get(key(q.x + dx, q.y + dy)); return n && n.p === q.p && n.m !== "ink"; };
+    const hi = !same(-1, 0) || !same(0, 1), lo = !same(1, 0) || !same(0, -1);
+    const sh = Math.max(-1, Math.min(1, q.p.shade + (hi && !lo ? 1 : lo && !hi ? -1 : 0)));
+    q.m = q.m + (sh > 0 ? "+" : sh < 0 ? "-" : "");
+  }
+  // --- silhouette outline (8-neighbour), then shift up so the outline under the feet sits at y = 0
+  for (const q of [...out.values()]) for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) { const k = key(q.x + dx, q.y + dy); if (!out.has(k)) out.set(k, { x: q.x + dx, y: q.y + dy, m: "ink" }); }
+  const pix = new Map(); let minX = 1e9, maxX = -1e9, maxY = -1e9;
+  for (const q of out.values()) { const y = q.y + 1; pix.set(key(q.x, y), q.m); minX = Math.min(minX, q.x); maxX = Math.max(maxX, q.x); maxY = Math.max(maxY, y); }
+  return { pix, key, minX, maxX, maxY, hip, sw };
+}
+
+const TEMPLATES = {
+  fighter: {"label": "Fighter (sword & shield)", "colors": {"primary": "#3b5aa8", "secondary": "#b3262b", "metal": "#aab2be", "leather": "#6b4428", "trim": "#e2b440"}, p5: { blade: "metal", trim: "metal", leather: "metal", hair: "secondary", bone: "metal", gem: "secondary", flame: "secondary" } },
+  rogue: {"label": "Rogue (twin daggers)", "colors": {"primary": "#466a8f", "secondary": "#9a2c38", "metal": "#aab2be", "leather": "#6b4428", "trim": "#e2b440"}, p5: { primary: "leather", blade: "metal", trim: "metal", hair: "leather", bone: "metal", gem: "secondary", flame: "secondary" } },
+  wizard: {"label": "Wizard (staff & hat)", "colors": {"primary": "#35408f", "secondary": "#b3262b", "hair": "#e8e4dc", "leather": "#7a4f2c", "gem": "#59d0ff", "trim": "#e2b440"}, p5: { secondary: "hair", trim: "hair", gem: "hair", metal: "hair", blade: "hair", bone: "hair", flame: "hair" } },
+  cleric: {"label": "Cleric (mace & shield)", "colors": {"primary": "#3b5aa8", "secondary": "#b3262b", "metal": "#aab2be", "leather": "#6b4428", "trim": "#e2b440"}, p5: { leather: "metal", trim: "metal", blade: "metal", hair: "secondary", bone: "metal", gem: "primary", flame: "secondary" } },
+  ranger: {"label": "Ranger (longbow & cloak)", "colors": {"primary": "#4c7a3e", "secondary": "#9a3a2c", "leather": "#6b4428", "trim": "#e2b440"}, p5: { bone: "skin", metal: "leather", blade: "leather", trim: "leather", hair: "leather", gem: "secondary", flame: "secondary" } },
+  barbarian: {"label": "Barbarian (great axe)", "colors": {"primary": "#3b5aa8", "secondary": "#a33b2a", "hair": "#8a4a22", "metal": "#aab2be", "leather": "#6b4428", "trim": "#e2b440"}, p5: { primary: "secondary", hair: "leather", trim: "metal", blade: "metal", bone: "metal", gem: "metal", flame: "secondary" } },
+  skeleton: {"label": "Skeleton warrior", "colors": {"bone": "#e8e0c8", "metal": "#aab2be"}, "monster": true, p5: { trim: "metal", blade: "metal", secondary: "leather", primary: "leather" } },
+  zombie: {"label": "Zombie", "colors": {"skin": "#7fa35a", "hair": "#3a2a1a", "primary": "#4a6a9a", "secondary": "#7a2e2e"}, "monster": true, p5: { leather: "hair", bone: "skin", metal: "hair", blade: "hair", trim: "hair" } },
+  cultist: {"label": "Cultist", "colors": {"secondary": "#8a1f2a", "gem": "#ffd84a", "skin": "#d9a07a", "leather": "#6b4428", "trim": "#e2b440", "flame": "#ff8a1e"}, "monster": true, p5: { bone: "trim", gem: "flame", leather: "secondary", primary: "secondary", metal: "trim", blade: "trim" } },
+  lich: {"label": "Lich (crowned skull)", "colors": {"primary": "#4b2a73", "secondary": "#b3262b", "bone": "#e8e0c8", "gem": "#59ffb0", "leather": "#7a4f2c", "trim": "#e2b440"}, "monster": true, p5: { secondary: "primary", leather: "trim", metal: "bone", blade: "bone", flame: "gem" } },
+};
+const TH = { "28": 34, "32": 38, "54": 62 };
+const spriteKey = (x, y) => (x + 500) * 2000 + (y + 500);
+function finishSprite(cells, ps, addOutline = true) {
+  // cells: Map key -> slot, y = 1 is the lowest figure row. Centers the feet on x = 0 and adds the
+  // 8-neighbour silhouette outline (or, for art that already has one, drops it so the outline row is y = 0).
+  const xy = k => [Math.floor(k / 2000) - 500, (k % 2000) - 500];
+  let fl = 1e9, fr = -1e9;
+  for (const [k] of cells) { const [x, y] = xy(k); if (y === 1) { fl = Math.min(fl, x); fr = Math.max(fr, x); } }
+  const dx0 = -Math.round((fl + fr + 1) / 2), dy0 = addOutline ? 0 : -1;
+  const out = new Map();
+  for (const [k, m] of cells) { const [x, y] = xy(k); out.set(spriteKey(x + dx0, y + dy0), m); }
+  if (addOutline) for (const k of [...out.keys()]) { const [x, y] = xy(k); for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) { const kk = spriteKey(x + a, y + b); if (!out.has(kk)) out.set(kk, "ink"); } }
+  let minX = 1e9, maxX = -1e9, maxY = -1e9;
+  for (const k of out.keys()) { const [x, y] = xy(k); minX = Math.min(minX, x); maxX = Math.max(maxX, x); maxY = Math.max(maxY, y); }
+  const hip = Math.ceil((fr - fl + 1) / 2);
+  return { pix: out, key: spriteKey, minX, maxX, maxY, hip, sw: hip, ps };
+}
+/* ---------------- Pose sprites (high detail) ----------------
+   Each pose is drawn from simple shapes on a pixel canvas (x centered on 0, y up from the ground).
+   Parts are drawn back to front; where a later part touches an earlier one an ink line is drawn,
+   which gives the hand-inked pixel-art look. Race changes body proportions and adds ears, tusks,
+   horns, snouts or beards. back = true draws the same silhouette as seen from behind. */
+const POSE_RACE = {
+  human:      { hip: 18, torso: 16, sw: 9, hp: 7, hw: 7, hh: 15, lw: 6 },
+  elf:        { hip: 20, torso: 16, sw: 8, hp: 6, hw: 7, hh: 15, lw: 5, ears: true },
+  dwarf:      { hip: 11, torso: 15, sw: 11, hp: 9, hw: 7, hh: 14, lw: 7, beard: true },
+  halfling:   { hip: 11, torso: 12, sw: 7, hp: 6, hw: 7, hh: 14, lw: 5, ears: "small" },
+  gnome:      { hip: 9,  torso: 11, sw: 7, hp: 6, hw: 7, hh: 15, lw: 5, ears: "small", nose: true },
+  orc:        { hip: 19, torso: 18, sw: 11, hp: 8, hw: 8, hh: 15, lw: 7, tusks: true, ears: "small" },
+  tiefling:   { hip: 18, torso: 16, sw: 9, hp: 7, hw: 7, hh: 15, lw: 6, horns: true },
+  dragonborn: { hip: 18, torso: 17, sw: 10, hp: 8, hw: 7, hh: 15, lw: 6, snout: true },
+};
+function poseCanvas(back = false) {
+  // Depth: "behind" (capes) < "body" < "front" (arms, weapons, shields). The back view flips the
+  // behind/front layers and the order of objects inside them, so held items sit behind the body
+  // and capes cover it.
+  const cells = new Map(); let pid = 0, gid = 0, layer = "body", cur = { id: 0, ink: true, pr: 0 }, slot = "primary";
+  const RANK = back ? { front: 0, body: 1, behind: 2 } : { behind: 0, body: 1, front: 2 };
+  const K = (x, y) => x * 4096 + y;
+  const C = {
+    cells,
+    part(s, ink = true) { pid++; const g = back && layer !== "body" ? 9999 - gid : gid; cur = { id: pid, ink, pr: RANK[layer] * 1e8 + g * 1e4 + pid }; slot = s; return C; },
+    layer(l) { const prev = layer; layer = l; gid++; return prev; },
+    group() { gid++; return C; },
+    col(s) { slot = s; return C; },
+    px(x, y, s = slot) { x = Math.round(x); y = Math.round(y); if (y < 0) return C; if (s === null) { cells.delete(K(x, y)); return C; } const e = cells.get(K(x, y)); if (e && e.p.pr > cur.pr) return C; cells.set(K(x, y), { x, y, s, p: cur }); return C; },
+    get(x, y) { return cells.get(K(x, y)); },
+    rect(x0, x1, y0, y1, s) { if (x0 > x1) [x0, x1] = [x1, x0]; if (y0 > y1) [y0, y1] = [y1, y0]; for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) C.px(x, y, s); return C; },
+    ell(cx, cy, rx, ry, s) { for (let x = Math.floor(cx - rx - 1); x <= cx + rx + 1; x++) for (let y = Math.floor(cy - ry - 1); y <= cy + ry + 1; y++) if (((x + 0.5 - cx) / rx) ** 2 + ((y + 0.5 - cy) / ry) ** 2 <= 1) C.px(x, y, s); return C; },
+    poly(pts, s) {
+      const ys = pts.map(p => p[1]), xs = pts.map(p => p[0]);
+      for (let y = Math.floor(Math.min(...ys)); y <= Math.max(...ys); y++) for (let x = Math.floor(Math.min(...xs)); x <= Math.max(...xs); x++) {
+        const px = x + 0.5, py = y + 0.5; let inside = false;
+        for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [xi, yi] = pts[i], [xj, yj] = pts[j]; if ((yi > py) !== (yj > py) && px < (xj - xi) * (py - yi) / (yj - yi) + xi) inside = !inside; }
+        if (inside) C.px(x, y, s);
+      }
+      return C;
+    },
+    line(x0, y0, x1, y1, w = 1, s) {
+      if (w <= 1) { const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)) || 1; for (let i = 0; i <= n; i++) C.px(Math.floor(x0 + (x1 - x0) * i / n + 0.5), Math.floor(y0 + (y1 - y0) * i / n + 0.5), s); return C; }
+      const r = w / 2, dx = x1 - x0, dy = y1 - y0, L2 = dx * dx + dy * dy || 1;
+      for (let x = Math.floor(Math.min(x0, x1) - r - 1); x <= Math.max(x0, x1) + r + 1; x++) for (let y = Math.floor(Math.min(y0, y1) - r - 1); y <= Math.max(y0, y1) + r + 1; y++) {
+        const px = x + 0.5, py = y + 0.5, t = Math.max(0, Math.min(1, ((px - x0) * dx + (py - y0) * dy) / L2));
+        if ((px - x0 - t * dx) ** 2 + (py - y0 - t * dy) ** 2 <= r * r) C.px(x, y, s);
+      }
+      return C;
+    },
+    // recolor already drawn pixels inside a rect
+    tint(x0, x1, y0, y1, from, to) { for (const q of cells.values()) if (q.x >= x0 && q.x <= x1 && q.y >= y0 && q.y <= y1 && (!from || from.includes(q.s))) q.s = to; return C; },
+  };
+  return C;
+}
+const M = x => -1 - x; // mirror a column across the center line
+function poseFinish(C) {
+  // ink where an earlier inked part is touched by a later inked part
+  const out = new Map();
+  for (const [k, q] of C.cells) {
+    let ink = q.s === "ink";
+    if (!ink && q.p.ink) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const n = C.get(q.x + dx, q.y + dy); if (n && n.p !== q.p && n.p.pr > q.p.pr && n.p.ink && n.s !== "ink") { ink = true; break; } }
+    out.set(k, { x: q.x, y: q.y, m: ink ? "ink" : q.s });
+  }
+  const cells = new Map();
+  for (const q of out.values()) cells.set(spriteKey(q.x, q.y + 1), q.m);
+  return cells;
+}
+function anchors(race) {
+  const R = POSE_RACE[race] || POSE_RACE.human;
+  const A = { ...R, race };
+  A.knee = Math.round(R.hip * 0.5); A.waist = R.hip + 3; A.sh = R.hip + R.torso; A.chin = A.sh + 1;
+  A.top = A.chin + R.hh; A.eye = A.chin + Math.round(R.hh * 0.42);
+  return A;
+}
+/* ----- body pieces ----- */
+function drawLegs(C, A, o = {}) {
+  const spread = o.spread ?? 2, pants = o.pants || "primary", boots = o.boots || "leather", bootH = o.bootH ?? Math.max(4, Math.round(A.hip * 0.35));
+  for (const sd of [-1, 1]) {
+    const fx = sd * (A.lw / 2 + spread) , hx = sd * (A.hp - A.lw / 2);
+    C.part(pants).poly([[hx - A.lw / 2, A.hip + 1], [hx + A.lw / 2, A.hip + 1], [fx + A.lw / 2, bootH], [fx - A.lw / 2, bootH]]);
+    const bx0 = Math.round(fx - A.lw / 2), bx1 = Math.round(fx + A.lw / 2) - 1;
+    C.part(boots).rect(bx0, bx1, 0, bootH).rect(sd < 0 ? bx0 - 1 : bx0, sd < 0 ? bx1 : bx1 + 1, 0, 1);
+    if (o.cuff) C.col(o.cuff).rect(bx0, bx1, bootH, bootH);
+  }
+}
+function drawHead(C, A, o = {}) {
+  const hw = A.hw, b = A.chin, t = A.top, back = o.back;
+  const skin = o.skin || "skin";
+  if (A.ears && !o.noEars) for (const sd of [-1, 1]) {
+    C.part(skin);
+    const x0 = sd < 0 ? -hw - 1 : hw;
+    if (A.ears === "small") C.rect(x0, x0, A.eye - 2, A.eye + 1).px(x0 + sd, A.eye + 1);
+    else C.poly(sd < 0 ? [[-hw + 1, A.eye - 3], [-hw - 5, A.eye + 4], [-hw + 1, A.eye + 1]] : [[hw - 1, A.eye - 3], [hw + 5, A.eye + 4], [hw - 1, A.eye + 1]]);
+  }
+  C.part(skin).rect(-hw, hw - 1, b + 1, t - 1).rect(-hw + 1, hw - 2, b, t);
+  if (A.snout) C.rect(-hw + 1, hw - 2, b - 1, b + 4).rect(-hw - 1, hw, b + 1, b + 3);
+  if (back) return;
+  // face
+  C.part("ink", false);
+  const ey = A.eye;
+  for (const x of [-4, 3]) C.rect(x, x, ey, ey + 1, "ink");
+  if (!o.noBrows) { C.rect(-5, -3, ey + 3, ey + 3, o.brow || "hair"); C.rect(2, 4, ey + 3, ey + 3, o.brow || "hair"); }
+  if (A.snout) { C.px(-3, b + 3, "ink"); C.px(2, b + 3, "ink"); C.rect(-2, 1, b + 1, b + 1, "ink"); }
+  else if (!o.noMouth) C.rect(A.tusks ? -2 : -1, A.tusks ? 1 : 0, b + 2, b + 2, "ink");
+  if (A.nose) C.part(skin).rect(-1, 0, ey - 3, ey - 1).rect(-2, 1, ey - 3, ey - 2);
+  if (A.tusks && !o.noMouth) { C.part("bone", false).rect(-3, -3, b + 2, b + 4).rect(2, 2, b + 2, b + 4); }
+}
+function drawHair(C, A, style = "short", back = false) {
+  const hw = A.hw, t = A.top, ey = A.eye;
+  C.part("hair");
+  if (style === "none") return;
+  C.rect(-hw, hw - 1, t - 2, t + 1).rect(-hw + 1, hw - 2, t + 2, t + 2);
+  C.rect(-hw - 1, -hw, ey, t - 1).rect(hw - 1, hw, ey, t - 1);
+  if (style === "long") { C.rect(-hw - 1, -hw + 1, A.sh - 4, ey).rect(hw - 2, hw, A.sh - 4, ey); }
+  if (style === "wild") { for (let i = 0; i < 6; i++) { const x = -hw - 1 + i * 3; C.rect(x, x + 1, t + 2, t + 3 + (i % 2)); } C.rect(-hw - 2, -hw, A.sh - 2, t - 1).rect(hw - 1, hw + 1, A.sh - 2, t - 1); }
+  if (back) C.rect(-hw, hw - 1, A.chin + 2, t);
+  else C.rect(-hw, -hw + 3, t - 3, t - 3).rect(1, 3, t - 3, t - 3); // fringe
+}
+function drawBeard(C, A, long = true) {
+  const hw = A.hw, b = A.chin, ey = A.eye;
+  C.part("hair");
+  C.rect(-hw, hw - 1, b - 1, ey - 2).rect(-hw + 1, hw - 2, b - (long ? 6 : 3), b).rect(-hw + 3, hw - 4, b - (long ? 9 : 4), b);
+  C.part("skin", false).rect(-2, 1, ey - 2, ey - 1); // nose/cheeks
+  C.part("ink", false).rect(-1, 0, b + 2, b + 2, "ink"); // mouth line in the beard
+}
+function drawHorns(C, A, y0) {
+  for (const sd of [-1, 1]) {
+    C.part("bone"); const x = sd < 0 ? -A.hw + 1 : A.hw - 2;
+    C.line(x, y0, x + sd * 2, y0 + 4, 2.4).line(x + sd * 2, y0 + 4, x + sd * 1, y0 + 7, 2);
+  }
+}
+function drawSnoutCrest(C, A) { for (const sd of [-1, 1]) { C.part("bone"); const x = sd < 0 ? -A.hw : A.hw - 1; C.line(x, A.top - 3, x + sd * 3, A.top + 2, 2); } }
+function drawArm(C, sx, sy, ex, ey, hx, hy, sleeve = "primary", o = {}) {
+  C.part(sleeve).line(sx, sy, ex, ey, o.w || 4.6).line(ex, ey, hx, hy, (o.w || 4.6) - 0.6);
+  if (o.cuff) C.col(o.cuff).line(hx + (ex - hx) * 0.35, hy + (ey - hy) * 0.35, hx + (ex - hx) * 0.45, hy + (ey - hy) * 0.45, (o.w || 4.6) - 0.2);
+  if (o.forearm) C.col(o.forearm).line(ex, ey, hx, hy, (o.w || 4.6) - 0.6);
+  C.part(o.hand || "skin").ell(hx, hy, 2.3, 2.3);
+}
+/* ----- gear ----- */
+function drawSword(C, hx, hy, ang, len = 20, back = false) {
+  const dx = Math.cos(ang), dy = Math.sin(ang);
+  C.part("leather").line(hx - dx * 3, hy - dy * 3, hx + dx * 1, hy + dy * 1, 2);
+  C.part("trim").ell(hx - dx * 4, hy - dy * 4, 1.4, 1.4);
+  const gx = hx + dx * 2, gy = hy + dy * 2;
+  C.part("trim").line(gx - dy * 3.5, gy + dx * 3.5, gx + dy * 3.5, gy - dx * 3.5, 2);
+  C.part("blade").line(gx + dx * 1, gy + dy * 1, gx + dx * len, gy + dy * len, 3.2);
+  if (!back) C.part("metal", false).line(gx + dx * 2, gy + dy * 2, gx + dx * (len - 2), gy + dy * (len - 2), 1, "metal");
+}
+function drawKiteShield(C, cx, cy, w, h, back, emblem = true) {
+  const pts = [[cx - w, cy + h * 0.55], [cx + w, cy + h * 0.55], [cx + w, cy - h * 0.05], [cx, cy - h * 0.6], [cx - w, cy - h * 0.05]];
+  C.part("metal").poly(pts.map(([x, y]) => [x + (x > cx ? 0.5 : x < cx ? -0.5 : 0), y + (y > cy ? 0.5 : -0.8)]));
+  const ins = pts.map(([x, y]) => [cx + (x - cx) * 0.78, cy + (y - cy) * 0.82]);
+  C.part(back ? "leather" : "secondary", false).poly(ins);
+  if (!back && emblem) { C.part("trim", false).rect(Math.round(cx) - 1, Math.round(cx), Math.round(cy - h * 0.3), Math.round(cy + h * 0.38)).rect(Math.round(cx) - 4, Math.round(cx) + 3, Math.round(cy + h * 0.12), Math.round(cy + h * 0.2)); }
+  if (back) C.part("metal", false).rect(Math.round(cx) - 4, Math.round(cx) + 3, Math.round(cy) - 1, Math.round(cy));
+}
+function drawRoundShield(C, cx, cy, r, back, face = "secondary") {
+  C.part("metal").ell(cx, cy, r, r);
+  C.part(back ? "leather" : face, false).ell(cx, cy, r - 1.6, r - 1.6);
+  if (!back) { C.part("metal", false).ell(cx, cy, 2, 2); C.part("trim", false).line(cx - r + 2, cy, cx - 3, cy, 1).line(cx + 2, cy, cx + r - 2, cy, 1); }
+}
+function drawStaff(C, x, y0, y1, gem = true) {
+  C.part("leather").rect(x, x + 1, y0, y1);
+  if (gem) { C.part("leather").rect(x - 2, x + 3, y1 - 1, y1 + 1).rect(x - 2, x - 1, y1 + 1, y1 + 4).rect(x + 2, x + 3, y1 + 1, y1 + 4); C.part("gem").ell(x + 1, y1 + 4.5, 2.6, 2.8); }
+}
+function drawAxe(C, x0, y0, x1, y1, big = true) {
+  C.part("leather").line(x0, y0, x1, y1, 2.2);
+  const dx = x1 - x0, dy = y1 - y0, L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L, nx = -uy, ny = ux;
+  const hx = x1 - ux * 4, hy = y1 - uy * 4, s = big ? 1 : 0.65;
+  const P = (a, b) => [hx + ux * a + nx * b, hy + uy * a + ny * b];
+  C.part("metal").poly([P(3 * s, 1), P(7 * s, 9 * s), P(-1, 11 * s), P(-9 * s, 9 * s), P(-5 * s, 1)]);
+  C.part("blade", false).poly([P(7 * s, 9 * s), P(-1, 11 * s), P(-9 * s, 9 * s), P(-8 * s, 7.8 * s), P(-1, 9.6 * s), P(6 * s, 7.8 * s)]);
+  if (big) { C.part("metal").poly([P(2, -1), P(5, -6), P(-3, -6), P(-4, -1)]); }
+}
+function drawMace(C, x0, y0, x1, y1) {
+  C.part("leather").line(x0, y0, x1, y1, 2);
+  const X = Math.round(x1), Y = Math.round(y1);
+  C.part("metal").ell(x1, y1, 3.6, 3.8).rect(X - 1, X, Y + 4, Y + 5).px(X - 4, Y + 3).px(X + 3, Y + 3).px(X - 4, Y - 3).px(X + 3, Y - 3).rect(X - 5, X - 5, Y - 1, Y).rect(X + 4, X + 4, Y - 1, Y);
+  C.part("blade", false).rect(X - 2, X - 1, Y + 1, Y + 2);
+}
+function drawDagger(C, hx, hy, ang) { const dx = Math.cos(ang), dy = Math.sin(ang); C.part("trim").line(hx - dy * 2.5, hy + dx * 2.5, hx + dy * 2.5, hy - dx * 2.5, 1.6); C.part("blade").line(hx + dx * 1.5, hy + dy * 1.5, hx + dx * 9, hy + dy * 9, 2.4); C.part("leather").line(hx - dx * 3, hy - dy * 3, hx - dx * 1, hy - dy * 1, 1.8); }
+function drawCape(C, A, w0, w1, bottom, back) {
+  C.part("secondary").poly([[-A.sw + 1, A.sh + 1], [A.sw - 1, A.sh + 1], [w1, bottom + 2], [w1 - 3, bottom], [w1 - 7, bottom + 2], [-w0 + 7, bottom], [-w0 + 3, bottom + 2], [-w0, bottom]]);
+}
+
+// Held things and arms draw in the front layer, capes behind; each call is one object.
+const layered = (f, l) => (C, ...a) => { const prev = C.layer(l); f(C, ...a); C.layer(prev); };
+drawArm = layered(drawArm, "front"); drawSword = layered(drawSword, "front"); drawKiteShield = layered(drawKiteShield, "front");
+drawRoundShield = layered(drawRoundShield, "front"); drawStaff = layered(drawStaff, "front"); drawAxe = layered(drawAxe, "front");
+drawMace = layered(drawMace, "front"); drawDagger = layered(drawDagger, "front"); drawCape = layered(drawCape, "behind");
+/* ----- poses ----- */
+const POSES = {
+  fighter(C, A, back) {
+    const S = A.sh, W = A.waist;
+    drawCape(C, A, A.sw + 6, A.sw + 6, 2, back);
+    drawLegs(C, A, { spread: 3, pants: "metal", boots: "leather", cuff: null });
+    C.part("metal").rect(-A.sw + 1, A.sw - 2, W, S).rect(-A.sw + 2, A.sw - 3, A.hip - 3, W); // breastplate
+    if (!back) { C.part("primary").poly([[-5, S - 1], [4, S - 1], [4, A.hip - 6], [-0.5, A.hip - 9], [-5, A.hip - 6]]); C.part("trim", false).rect(-1, 0, A.hip - 5, S - 3).rect(-4, 3, S - 6, S - 5); }
+    C.part("leather").rect(-A.sw + 2, A.sw - 3, W - 1, W + 1); C.part("trim", false).rect(-2, 1, W - 1, W + 1);
+    for (const sd of [-1, 1]) C.part("metal").ell(sd < 0 ? -A.sw + 0.5 : A.sw - 0.5, S - 1, 4, 3.4); // pauldrons
+    // sword arm (right of image) raised, shield arm (left)
+    drawArm(C, A.sw - 1, S - 3, A.sw + 4, S - 9, A.sw + 6, S - 3, "metal");
+    drawSword(C, A.sw + 6, S - 3, Math.PI * 0.32, 22, back);
+    drawArm(C, -A.sw + 1, S - 3, -A.sw - 3, S - 9, -A.sw - 1, S - 13, "metal");
+    drawKiteShield(C, -A.sw - 2.5, S - 12, 5.5, 14, back);
+    // head + helmet
+    drawHead(C, A, { back, noEars: true, noBrows: true });
+    if (A.beard && !back) drawBeard(C, A, true);
+    const hw = A.hw, t = A.top;
+    C.part("metal").rect(-hw - 1, hw, A.eye + 4, t + 1).rect(-hw, hw - 1, t + 2, t + 2).rect(-hw - 1, -hw, A.chin + 1, A.eye + 3).rect(hw - 1, hw, A.chin + 1, A.eye + 3);
+    if (back) C.rect(-hw - 1, hw, A.chin + 1, t);
+    else C.part("metal").rect(-1, 0, A.eye - 2, A.eye + 4);
+    C.part("secondary").rect(-1, 0, t + 3, t + 6).rect(-2, 1, t + 4, t + 5); // plume
+    if (A.horns || A.snout) drawHorns(C, A, A.top - 2);
+  },
+  rogue(C, A, back) {
+    const S = A.sh, W = A.waist;
+    drawCape(C, A, A.sw + 3, A.sw + 3, Math.round(A.hip * 0.45), back);
+    drawLegs(C, A, { spread: 4, pants: "primary", boots: "leather" });
+    C.part("primary").poly([[-A.sw + 1, S], [A.sw - 1, S], [A.sw - 2, A.hip - 1], [-A.sw + 2, A.hip - 1]]);
+    if (!back) { C.part("leather", false).line(-A.sw + 2, S - 1, A.sw - 3, A.hip, 1.6); C.part("trim", false).rect(-2, -1, S - 6, S - 5); }
+    C.part("leather").rect(-A.sw + 2, A.sw - 3, W - 2, W); C.part("trim", false).rect(-1, 0, W - 2, W);
+    // arms low and out, daggers reversed
+    drawArm(C, -A.sw + 1, S - 2, -A.sw - 4, S - 9, -A.sw - 6, W - 2, "primary", { forearm: "leather" });
+    drawDagger(C, -A.sw - 6, W - 2, Math.PI * 1.25);
+    drawArm(C, A.sw - 2, S - 2, A.sw + 3, S - 9, A.sw + 5, W - 2, "primary", { forearm: "leather" });
+    drawDagger(C, A.sw + 5, W - 2, -Math.PI * 0.25);
+    drawHead(C, A, { back, noMouth: true });
+    const hw = A.hw, t = A.top;
+    // hood + mask
+    C.part("secondary").rect(-hw - 2, hw + 1, A.eye + 4, t + 1).rect(-hw - 1, hw, t + 2, t + 2).rect(-hw + 2, hw - 2, t + 3, t + 3).rect(-hw - 2, -hw, A.chin - 1, A.eye + 3).rect(hw - 1, hw + 1, A.chin - 1, A.eye + 3).rect(-hw - 3, hw + 2, S - 2, A.chin);
+    if (back) C.rect(-hw - 2, hw + 1, A.chin, t + 1);
+    else C.part("primary").rect(-hw + 1, hw - 2, A.chin, A.eye - 3);
+    if (A.horns || A.snout) drawHorns(C, A, A.top + 2);
+  },
+  wizard(C, A, back) {
+    const S = A.sh;
+    C.part("primary").poly([[-A.sw + 1, S], [A.sw - 1, S], [A.sw + 4, 0], [-A.sw - 4, 0]]); // robe
+    if (!back) { C.part("trim", false).rect(-1, 0, 0, S - 2); C.part("secondary", false).rect(-A.sw - 3, A.sw + 2, 0, 1); }
+    C.part("leather").rect(-A.sw + 1, A.sw - 2, A.waist - 1, A.waist + 1); C.part("trim", false).rect(-1, 0, A.waist - 1, A.waist + 1);
+    C.part("leather").rect(-6, -2, 0, 1).rect(1, 5, 0, 1);
+    // staff hand (right of image), casting hand raised (left)
+    drawStaff(C, A.sw + 4, 0, A.top + 4);
+    drawArm(C, A.sw - 2, S - 2, A.sw + 2, S - 8, A.sw + 4.5, S - 6, "primary", { w: 5.4 });
+    drawArm(C, -A.sw + 1, S - 2, -A.sw - 4, S - 5, -A.sw - 5, S + 3, "primary", { w: 5.4 });
+    C.part("gem").ell(-A.sw - 5.5, S + 8, 2.2, 2.2); C.part("gem", false).px(-A.sw - 9, S + 11).px(-A.sw - 2, S + 12).px(-A.sw - 8, S + 5);
+    drawHead(C, A, { back, noMouth: true });
+    if (!back) { C.part("hair").rect(-A.hw, A.hw - 1, A.chin - 9, A.eye - 3).rect(-A.hw + 2, A.hw - 3, A.chin - 13, A.chin - 9).rect(-2, 1, A.chin - 15, A.chin - 13); C.part("skin", false).rect(-2, 1, A.eye - 2, A.eye - 1); C.part("ink", false).rect(-1, 0, A.eye - 4, A.eye - 4, "ink"); }
+    else C.part("hair").rect(-A.hw, A.hw - 1, A.chin - 4, A.top - 2);
+    // hat
+    const t = A.top, hw = A.hw;
+    C.part("primary").rect(-hw - 6, hw + 5, t - 1, t);
+    C.part("primary").poly([[-hw - 1, t], [hw, t], [3, t + 9], [-4, t + 16], [-9, t + 15], [-5, t + 9]]);
+    C.part("secondary", false).rect(-hw, hw - 1, t + 1, t + 2);
+    if (!back) C.part("trim", false).px(-1, t + 6).px(1, t + 9).px(-3, t + 11);
+    if (A.horns || A.snout) drawHorns(C, A, A.top - 3);
+  },
+  cleric(C, A, back) {
+    const S = A.sh, W = A.waist;
+    drawCape(C, A, A.sw + 4, A.sw + 4, 2, back);
+    drawLegs(C, A, { spread: 2, pants: "metal", boots: "leather" });
+    C.part("metal").poly([[-A.sw + 1, S], [A.sw - 1, S], [A.sw - 1, A.hip - 6], [-A.sw + 1, A.hip - 6]]); // mail
+    C.part(back ? "secondary" : "primary").poly([[-A.sw + 3, S - 1], [A.sw - 3, S - 1], [A.sw - 3, A.hip - 8], [-A.sw + 3, A.hip - 8]]); // tabard
+    if (!back) C.part("trim", false).rect(-1, 0, W - 8, S - 3).rect(-4, 3, S - 6, S - 5);
+    C.part("leather").rect(-A.sw + 1, A.sw - 2, W - 1, W);
+    C.part("metal").ell(-A.sw + 0.5, S - 1, 3.6, 3).ell(A.sw - 0.5, S - 1, 3.6, 3);
+    drawArm(C, A.sw - 1, S - 3, A.sw + 4, S - 8, A.sw + 5, S - 1, "metal");
+    drawMace(C, A.sw + 5, S - 4, A.sw + 6, S + 10);
+    drawArm(C, -A.sw + 1, S - 3, -A.sw - 2, S - 9, -A.sw, S - 13, "metal");
+    drawRoundShield(C, -A.sw - 1, S - 12, 7.5, back, "primary");
+    if (!back) { const pl = C.layer("front"); C.part("trim", false).tint(-A.sw - 7, -A.sw + 5, S - 19, S - 5, ["trim"], "metal").rect(-A.sw - 2, -A.sw - 1, S - 16, S - 8).rect(-A.sw - 5, -A.sw + 2, S - 13, S - 12); C.layer(pl); }
+    drawHead(C, A, { back });
+    if (A.beard && !back) drawBeard(C, A, true);
+    drawHair(C, A, A.race === "dragonborn" ? "none" : "short", back);
+    if (A.horns) drawHorns(C, A, A.top);
+    if (A.snout) drawSnoutCrest(C, A);
+  },
+  ranger(C, A, back) {
+    const S = A.sh, W = A.waist;
+    drawCape(C, A, A.sw + 5, A.sw + 3, Math.round(A.hip * 0.3), back);
+    drawLegs(C, A, { spread: 3, pants: "leather", boots: "leather", cuff: "primary" });
+    C.part("primary").poly([[-A.sw + 1, S], [A.sw - 1, S], [A.sw - 1, A.hip - 5], [-A.sw + 1, A.hip - 5]]);
+    if (!back) { C.part("leather", false).line(A.sw - 2, S - 1, -A.sw + 2, A.hip - 3, 1.6); }
+    C.part("leather").rect(-A.sw + 1, A.sw - 2, W - 1, W); C.part("trim", false).rect(-1, 0, W - 1, W);
+    // hip quiver hanging from the belt, in front
+    const qx = A.sw - 2, qb = Math.max(4, A.hip - 6);
+    C.part("secondary").px(qx - 1, W + 1).px(qx - 1, W + 2).px(qx + 2, W + 1).px(qx + 2, W + 2); // fletching
+    C.part("leather").line(qx - 1, W, qx + 1, qb, 3.4); C.part("trim", false).rect(qx - 2, qx + 1, W - 1, W - 1);
+    // bow raised to eye level on the left, arrow drawn back to the cheek, in front of the face
+    const bow = () => {
+      const prev = C.layer("front");
+      const bx = -A.sw - 8, by = A.eye - 2, hx = A.hw - 2;
+      drawArm(C, -A.sw + 1, S - 2, -A.sw - 4, S + 2, bx + 1.5, by, "primary", { forearm: "leather" });
+      C.part("leather");
+      for (let i = -15; i <= 15; i++) { const x = bx + 1 - Math.round(5 * (1 - (i / 15) ** 2)); C.rect(x, x + 1, by + i, by + i); }
+      C.part("bone", false).line(bx + 1, by - 15, hx, by, 1).line(bx + 1, by + 15, hx, by, 1);
+      C.part("leather", false).line(bx - 6, by, hx - 2, by, 1); C.part("metal").rect(bx - 8, bx - 6, by - 1, by + 1).px(bx - 9, by);
+      drawArm(C, A.sw - 1, S - 2, A.sw + 4, S + 1, hx + 1, by, "primary", { forearm: "leather" });
+      C.part("secondary", false).rect(hx - 4, hx - 3, by - 1, by + 1);
+      C.layer(prev);
+    };
+    drawHead(C, A, { back });
+    if (A.beard && !back) drawBeard(C, A, false);
+    const hw = A.hw, t = A.top;
+    C.part("secondary").rect(-hw - 1, hw, A.eye + 3, t + 1).rect(-hw, hw - 1, t + 2, t + 3).rect(-hw + 2, hw - 1, t + 4, t + 4).rect(hw - 2, hw + 2, t + 2, t + 3).rect(-hw - 2, -hw, A.chin - 1, A.eye + 2).rect(hw - 1, hw + 1, A.chin - 1, A.eye + 2);
+    C.rect(-hw - 2, hw + 1, S - 2, A.chin - 1);
+    if (back) C.rect(-hw - 1, hw, A.chin, t + 1);
+    else C.part("hair", false).rect(-hw + 1, hw - 2, A.eye + 3, A.eye + 3);
+    if (A.horns || A.snout) drawHorns(C, A, A.top + 1);
+    bow();
+  },
+  barbarian(C, A, back) {
+    const S = A.sh, W = A.waist;
+    drawLegs(C, A, { spread: 4, pants: "leather", boots: "leather", cuff: "secondary" });
+    C.part("skin").poly([[-A.sw, S], [A.sw - 1, S], [A.sw - 2, W], [-A.sw + 1, W]]); C.rect(-A.sw + 2, A.sw - 3, A.hip - 1, W);
+    if (!back) { C.part("ink", false).rect(-A.sw + 3, -2, S - 5, S - 5, "ink").rect(1, A.sw - 4, S - 5, S - 5, "ink").rect(-1, 0, W + 2, S - 7, "ink").rect(-4, -3, W + 3, W + 3, "ink").rect(2, 3, W + 3, W + 3, "ink"); }
+    C.part("leather").line(-A.sw + 1, S, A.sw - 2, W, 2.2);
+    C.part("leather").rect(-A.sw + 1, A.sw - 2, A.hip - 1, W - 1); C.part("trim", false).rect(-2, 1, A.hip - 1, W - 1);
+    C.part("secondary").poly([[-A.hp, A.hip - 1], [A.hp - 1, A.hip - 1], [A.hp - 2, A.hip - 8], [-A.hp + 1, A.hip - 8]]);
+    C.part("leather").ell(-A.sw, S - 1, 4.2, 3.2); // fur pauldron
+    // great axe held across the body, head up on the right
+    const axe = () => { // in front of the face on the front view, behind the head on the back view
+      const prev = C.layer("front");
+      drawArm(C, -A.sw + 1, S - 3, -A.sw - 2, W, -3, W - 2, "skin", { cuff: "leather" });
+      drawArm(C, A.sw - 1, S - 3, A.sw + 3, S - 6, A.sw + 2, S + 1, "skin", { cuff: "leather" });
+      drawAxe(C, -9, W - 7, A.sw + 4, A.top + 3, true);
+      C.part("skin").ell(-3, W - 2, 2.4, 2.4).ell(A.sw + 2.5, S + 1, 2.4, 2.4);
+      C.layer(prev);
+    };
+    drawHead(C, A, { back });
+    if (A.beard && !back) drawBeard(C, A, true);
+    if (A.race !== "dragonborn") drawHair(C, A, "wild", back);
+    if (A.horns) drawHorns(C, A, A.top);
+    if (A.snout) drawSnoutCrest(C, A);
+    axe();
+  },
+  skeleton(C, A, back) {
+    const S = A.sh, W = A.waist, B = "bone";
+    for (const sd of [-1, 1]) { // legs
+      const fx = sd * 5, hx = sd * 3;
+      C.part(B).line(hx, A.hip - 1, fx, A.knee, 2.2).line(fx, A.knee, fx, 2, 2.2).ell(fx, A.knee, 1.6, 1.6);
+      C.part(B).rect(fx - 1 + (sd < 0 ? -2 : 0), fx + 1 + (sd > 0 ? 2 : 0), 0, 1);
+    }
+    C.part(B).poly([[-5, A.hip + 1], [4, A.hip + 1], [3, A.hip - 3], [-4, A.hip - 3]]); // pelvis
+    C.part(B).rect(-1, 0, A.hip, S);  // spine
+    C.part(B).ell(-0.5, S - 6, 7, 6.5);  // ribcage
+    C.part("ink", false); for (const y of [S - 3, S - 6, S - 9]) C.rect(-6, -2, y, y, "ink").rect(1, 5, y, y, "ink");
+    C.part(B).rect(-A.sw, A.sw - 1, S - 1, S);
+    drawArm(C, -A.sw + 1, S - 1, -A.sw - 3, S - 8, -A.sw - 1, S - 14, B, { w: 2.4, hand: B });
+    drawRoundShield(C, -A.sw - 2, S - 13, 6.5, back, "leather");
+    drawArm(C, A.sw - 1, S - 1, A.sw + 3, S - 7, A.sw + 5, S - 1, B, { w: 2.4, hand: B });
+    drawSword(C, A.sw + 5, S - 1, Math.PI * 0.36, 19, back);
+    // skull
+    const hw = A.hw, b = A.chin, t = A.top;
+    C.part(B).rect(-hw, hw - 1, b + 4, t - 1).rect(-hw + 1, hw - 2, b + 3, t).rect(-hw + 2, hw - 3, b, b + 3);
+    if (!back) { C.part("ink", false).rect(-5, -2, A.eye - 1, A.eye + 1, "ink").rect(1, 4, A.eye - 1, A.eye + 1, "ink").rect(-1, 0, A.eye - 3, A.eye - 2, "ink"); for (let x = -4; x <= 3; x += 2) C.px(x, b + 1, "ink"); C.rect(-4, 3, b + 2, b + 2, "ink"); }
+  },
+  zombie(C, A, back) {
+    const S = A.sh - 1, W = A.waist;
+    for (const sd of [-1, 1]) { const fx = sd * 4 + (sd > 0 ? 1 : 0); C.part("primary").line(sd * 3, A.hip, fx, 3, 5.2); C.part("skin").rect(fx - 3, fx + 2, 0, 3); }
+    if (!back) C.part("skin", false).rect(-6, -4, A.knee - 2, A.knee + 1).rect(3, 4, A.knee + 3, A.knee + 4);
+    C.part("secondary").poly([[-A.sw + 1, S], [A.sw, S - 1], [A.sw - 1, A.hip - 4], [A.sw - 4, A.hip - 2], [A.sw - 6, A.hip - 5], [-A.sw + 4, A.hip - 3], [-A.sw + 2, A.hip - 5]]);
+    if (!back) { C.part("skin", false).poly([[-3, S - 3], [2, S - 4], [-1, S - 9]]); C.part("ink", false).rect(-6, -5, W - 2, W + 2, "ink").rect(4, 5, S - 8, S - 7, "ink"); }
+    C.part("leather").line(-A.sw + 1, W - 1, A.sw - 1, W, 1.6);
+    // one arm reaching forward/up, one hanging
+    drawArm(C, A.sw - 1, S - 2, A.sw + 5, S + 2, A.sw + 10, S + 5, "secondary", { forearm: "skin", w: 4.4 });
+    C.part("skin").rect(A.sw + 9, A.sw + 13, S + 6, S + 7).rect(A.sw + 11, A.sw + 14, S + 4, S + 5);
+    drawArm(C, -A.sw + 1, S - 2, -A.sw - 4, S - 4, -A.sw - 9, S - 1, "secondary", { forearm: "skin", w: 4.4 });
+    C.part("skin").rect(-A.sw - 13, -A.sw - 9, S - 3, S - 2).rect(-A.sw - 14, -A.sw - 12, S - 5, S - 4);
+    // tilted head
+    const hw = A.hw, b = A.chin - 1, t = A.top - 2;
+    C.part("skin").poly([[-hw - 1, b + 3], [hw - 2, b], [hw + 1, t - 3], [-hw + 1, t]]);
+    C.part("hair").poly([[-hw - 1, t - 4], [hw + 1, t - 6], [hw + 1, t - 3], [-hw + 1, t + 1]]).rect(-hw - 2, -hw - 1, b + 6, t - 3);
+    if (back) C.part("hair").poly([[-hw - 1, b + 3], [hw - 2, b], [hw + 1, t - 3], [-hw + 1, t]]);
+    else { C.part("ink", false).rect(-5, -4, A.eye - 1, A.eye, "ink"); C.part("bone", false).rect(1, 3, A.eye - 2, A.eye - 1); C.part("ink", false).px(2, A.eye - 2).rect(-3, 2, b + 2, b + 2, "ink").px(-2, b + 1, "bone").px(1, b + 1, "bone"); }
+  },
+  cultist(C, A, back) {
+    const S = A.sh;
+    C.part("secondary").poly([[-A.sw + 1, S], [A.sw - 1, S], [A.sw + 3, 0], [-A.sw - 3, 0]]);
+    if (!back) { C.part("trim", false).rect(-1, 0, 0, A.waist - 2); C.part("ink", false).line(-5, A.hip, -7, 1, 1, "ink").line(4, A.hip, 6, 1, 1, "ink"); }
+    C.part("leather").rect(-A.sw + 1, A.sw - 2, A.waist - 1, A.waist);
+    // both hands holding a candle/skull-lantern in front
+    drawArm(C, -A.sw + 1, S - 2, -A.sw - 1, A.waist + 2, -3, A.waist + 4, "secondary", { w: 5 });
+    drawArm(C, A.sw - 1, S - 2, A.sw + 1, A.waist + 2, 2, A.waist + 4, "secondary", { w: 5 });
+    const pl = C.layer("front");
+    if (!back) { C.part("trim").rect(-3, 2, A.waist + 6, A.waist + 7); C.part("bone").rect(-2, 1, A.waist + 8, A.waist + 12); C.part("flame").poly([[-2, A.waist + 13], [1, A.waist + 13], [0.5, A.waist + 18], [-1.5, A.waist + 16]]); C.part("trim", false).rect(-1, 0, A.waist + 13, A.waist + 14); }
+    else C.part("secondary").rect(-3, 2, A.waist + 6, A.waist + 12).poly([[-2, A.waist + 13], [1, A.waist + 13], [0.5, A.waist + 18], [-1.5, A.waist + 16]]);
+    C.layer(pl);
+    // deep hood
+    const hw = A.hw + 1, t = A.top + 2;
+    C.part("secondary").poly([[-hw - 2, A.sh - 2], [hw + 1, A.sh - 2], [hw + 1, t - 6], [1, t + 3], [-2, t + 3], [-hw - 2, t - 6]]);
+    if (!back) { C.part("ink").rect(-hw + 2, hw - 3, A.chin, A.eye + 3, "ink").rect(-hw + 3, hw - 4, A.eye + 4, A.eye + 5, "ink"); C.part("gem", false).rect(-4, -3, A.eye, A.eye).rect(2, 3, A.eye, A.eye); C.part("trim", false).rect(-hw - 1, hw, A.sh - 2, A.sh - 2); }
+  },
+  lich(C, A, back) {
+    const S = A.sh;
+    C.part("primary").poly([[-A.sw + 1, S], [A.sw - 1, S], [A.sw + 5, 2], [A.sw + 3, 0], [A.sw, 2], [A.sw - 3, 0], [-1, 2], [-4, 0], [-A.sw + 1, 2], [-A.sw - 2, 0], [-A.sw - 5, 2]]);
+    C.part("secondary").poly([[-A.sw - 1, S + 2], [A.sw, S + 2], [A.sw + 2, S - 3], [-A.sw - 3, S - 3]]); // mantle
+    if (!back) { C.part("trim", false).rect(-1, 0, 3, S - 4).rect(-A.sw, A.sw - 1, S - 3, S - 3); C.part("bone", false).rect(-2, 1, S - 9, S - 6); C.part("ink", false).px(-2, S - 7).px(1, S - 7); }
+    C.part("trim").rect(-A.sw + 1, A.sw - 2, A.waist - 1, A.waist);
+    drawStaff(C, A.sw + 5, 0, A.top + 3);
+    C.part("bone").rect(A.sw + 3, A.sw + 8, A.top + 1, A.top + 4);
+    drawArm(C, A.sw - 1, S - 1, A.sw + 3, S - 8, A.sw + 5.5, S - 6, "primary", { hand: "bone", w: 5.4 });
+    drawArm(C, -A.sw + 1, S - 1, -A.sw - 5, S - 4, -A.sw - 6, S + 3, "primary", { hand: "bone", w: 5.4 });
+    C.part("gem").poly([[-A.sw - 8, S + 6], [-A.sw - 4, S + 6], [-A.sw - 5, S + 12], [-A.sw - 6, S + 9], [-A.sw - 7.5, S + 13]]);
+    // skull + crown
+    const hw = A.hw, b = A.chin, t = A.top;
+    C.part("bone").rect(-hw, hw - 1, b + 4, t - 1).rect(-hw + 1, hw - 2, b + 3, t).rect(-hw + 2, hw - 3, b, b + 3);
+    if (!back) { C.part("ink", false).rect(-5, -2, A.eye - 1, A.eye + 1, "ink").rect(1, 4, A.eye - 1, A.eye + 1, "ink"); C.part("gem", false).px(-4, A.eye).px(2, A.eye); C.part("ink", false).rect(-1, 0, A.eye - 3, A.eye - 2, "ink").rect(-4, 3, b + 1, b + 1, "ink"); }
+    C.part("trim").rect(-hw, hw - 1, t - 1, t + 1); for (const x of [-hw, -hw + 3, hw - 4, hw - 1]) C.rect(x, x, t + 2, t + 3); C.rect(-1, 0, t + 2, t + 4);
+    if (!back) C.part("gem", false).rect(-1, 0, t, t);
+  },
+};
+function poseSprite(name, race, back) {
+  const C = poseCanvas(back), A = anchors(POSES_MONSTER[name] ? "human" : race);
+  POSES[name](C, A, back);
+  return poseFinish(C);
+}
+const POSES_MONSTER = { skeleton: 1, zombie: 1, cultist: 1, lich: 1 };
+// Pixel size is set so a human hero (head top at row 50) is the chosen scale; other races are naturally shorter or taller.
+function templateSprite(s, back = false) {
+  const cells = poseSprite(s.tpl, s.race, back);
+  // 5-filament palette: each template says which part takes which of its 4 colors (plus black)
+  const p5 = TEMPLATES[s.tpl].p5;
+  if (p5 && s.maxColors !== "all" && Number(s.maxColors) <= 5) for (const [k, m] of cells) if (p5[m]) cells.set(k, p5[m]);
+  const ps = (TH[s.scale] || 34) / (anchors("human").top + 4);
+  return finishSprite(cells, ps);
+}
+
+/* ---------------- Uploaded pixel art ---------------- */
+let upload = null, edited = null; // edited: { front, back: Map(key -> slot) without the outline, ps } // { w, h, px: [hex|null] } after downscaling
+function relLum(hex) { const lin = v => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; const [r, g, b] = hexRgb(hex); return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b); }
+function readUpload(img) {
+  const c = document.createElement("canvas"); c.width = img.naturalWidth; c.height = img.naturalHeight;
+  const ctx = c.getContext("2d"); ctx.drawImage(img, 0, 0);
+  const W = c.width, H = c.height, d = ctx.getImageData(0, 0, W, H).data;
+  const at = (x, y) => { const i = (y * W + x) * 4; return d[i + 3] < 128 ? null : "#" + [d[i], d[i + 1], d[i + 2]].map(v => v.toString(16).padStart(2, "0")).join(""); };
+  // detect integer upscaling (e.g. 32px art saved at 8x) from the gcd of same-color run lengths
+  const gcd = (a, b) => b ? gcd(b, a % b) : a;
+  let f = 0;
+  for (let y = 0; y < H && f !== 1; y++) { let run = 1; for (let x = 1; x <= W; x++) { if (x < W && at(x, y) === at(x - 1, y)) run++; else { f = gcd(f, run); run = 1; } } }
+  for (let x = 0; x < W && f !== 1; x++) { let run = 1; for (let y = 1; y <= H; y++) { if (y < H && at(x, y) === at(x, y - 1)) run++; else { f = gcd(f, run); run = 1; } } }
+  f = Math.max(1, f);
+  const w = Math.floor(W / f), h = Math.floor(H / f);
+  if (w > 120 || h > 120) throw new Error(`That image is ${w}×${h} pixels. Pixel art up to 120×120 works best; try a smaller sprite.`);
+  const px = [];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) px.push(at(x * f + (f >> 1), y * f + (f >> 1)));
+  // trim empty borders
+  let x0 = w, x1 = -1, y0 = h, y1 = -1;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (px[y * w + x]) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+  if (x1 < 0) throw new Error("The image is fully transparent. Use a PNG with a transparent background around the character.");
+  const tw = x1 - x0 + 1, thh = y1 - y0 + 1, tp = [];
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) tp.push(px[y * w + x]);
+  return { w: tw, h: thh, px: tp, scaleFactor: f };
+}
+function uploadSprite(s, back = false) {
+  const U = upload, cells = new Map(), count = new Map();
+  for (let y = 0; y < U.h; y++) for (let x = 0; x < U.w; x++) {
+    const hex = U.px[y * U.w + x]; if (!hex) continue;
+    const slot = relLum(hex) < 0.012 ? "ink" : "c_" + hex.slice(1);
+    cells.set(spriteKey(x - Math.floor(U.w / 2), U.h - y), slot);
+    if (slot !== "ink") count.set(slot, (count.get(slot) || 0) + 1);
+  }
+  // If the art already has a dark outline, don't add a second one.
+  let outlined = true;
+  for (const [k, m] of cells) { const x = Math.floor(k / 2000) - 500, y = (k % 2000) - 500; if (m !== "ink" && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => !cells.has(spriteKey(x + a, y + b)))) { outlined = false; break; } }
+  if (back) { const main = [...count.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || "ink"; for (const k of cells.keys()) cells.set(k, main); }
+  const ps = Math.max(0.45, Math.min(1.4, (TH[s.scale] || 34) / (U.h + (outlined ? 1 : 3))));
+  return finishSprite(cells, ps, !outlined);
+}
+function makeSprite(s, back = false) {
+  if (s.tpl === "fittest") { // a plain black stub with the normal snap tab, for the fit test kit
+    const pix = new Map(), ps = (TH[s.scale] || 34) / (anchors("human").top + 4);
+    for (let x = -7; x <= 6; x++) for (let y = 0; y <= 12; y++) pix.set(spriteKey(x, y), "ink");
+    return { pix, key: spriteKey, minX: -7, maxX: 6, maxY: 12, hip: 6, sw: 6, ps };
+  }
+  if (s.tpl === "custom" && edited) return finishSprite(new Map(back ? edited.back : edited.front), edited.psRel * (TH[s.scale] || 34));
+  if (s.tpl === "upload" && upload) return uploadSprite(s, back);
+  if (TEMPLATES[s.tpl]) return templateSprite(s, back);
+  return buildSprite(s, back);
+}
+function applyTemplate(s, name) {
+  s.tpl = name; const T = TEMPLATES[name]; if (!T) return;
+  Object.assign(s.colors, T.colors);
+  if (!T.monster) { s.colors.skin = RACES[s.race].skin; const hero = { fighter: "fighter", rogue: "rogue", wizard: "wizard", cleric: "cleric", ranger: "ranger", barbarian: "barbarian" }[name]; if (hero) s.cls = hero; }
+}
+
+/* Voxel size in mm for the chosen scale. A human figure is 24 coarse (48 fine) voxels tall. */
+function voxelSize(scale) { return { "28": 32 / 24, "32": 36 / 24, "54": 62 / 24 }[scale] || 32 / 24; }
+
+/* ---------- Make the voxel surface a 2-manifold ----------
+   Look at every grid vertex (a 2x2x2 block). If the filled cells or the empty cells in that
+   block split into more than one face-connected group, the surface would pinch (shared edge or
+   corner only). Fill the empty cell that best repairs it, and repeat until clean. */
+const FIX = (() => {
+  const comps = m => {
+    let seen = 0, n = 0;
+    for (let i = 0; i < 8; i++) if ((m >> i) & 1 && !((seen >> i) & 1)) {
+      n++; const st = [i]; seen |= 1 << i;
+      while (st.length) { const c = st.pop(); for (const b of [1, 2, 4]) { const j = c ^ b; if ((m >> j) & 1 && !((seen >> j) & 1)) { seen |= 1 << j; st.push(j); } } }
+    }
+    return n;
+  };
+  const bad = m => m !== 0 && m !== 255 && (comps(m) > 1 || comps(~m & 255) > 1);
+  const t = new Int8Array(256).fill(-1);
+  for (let m = 0; m < 256; m++) if (bad(m)) {
+    let best = -1, bs = 1e9;
+    for (let i = 0; i < 8; i++) if (!((m >> i) & 1)) {
+      const m2 = m | (1 << i), sc = bad(m2) ? comps(m2) + comps(~m2 & 255) : 0;
+      if (sc < bs) { bs = sc; best = i; }
+    }
+    t[m] = best;
+  }
+  return t;
+})();
+function makeManifold(g) {
+  let added = 0;
+  for (let pass = 0; pass < 40; pass++) {
+    const b = g.bounds(); let changed = false;
+    for (let x = b[0]; x <= b[1] + 1; x++) for (let y = b[2]; y <= b[3] + 1; y++) for (let z = b[4]; z <= b[5] + 1; z++) {
+      let m = 0;
+      for (let i = 0; i < 8; i++) if (g.fhas(x - 1 + (i & 1), y - 1 + ((i >> 1) & 1), z - 1 + ((i >> 2) & 1))) m |= 1 << i;
+      const f = FIX[m];
+      if (f >= 0) {
+        const fx = x - 1 + (f & 1), fy = y - 1 + ((f >> 1) & 1), fz = z - 1 + ((f >> 2) & 1);
+        let c = null;
+        for (const bit of [1, 2, 4]) { const j = f ^ bit; if ((m >> j) & 1) { c = g.fget(x - 1 + (j & 1), y - 1 + ((j >> 1) & 1), z - 1 + ((j >> 2) & 1)); break; } }
+        if (c == null) for (let j = 0; j < 8; j++) if ((m >> j) & 1) { c = g.fget(x - 1 + (j & 1), y - 1 + ((j >> 1) & 1), z - 1 + ((j >> 2) & 1)); break; }
+        g.fset(fx, fy, fz, c); added++; changed = true;
+      }
+    }
+    if (!changed) break;
+  }
+  return added;
+}
+
+/* Keep only the part connected to the lowest voxel, so nothing floats. */
+function dropFloaters(g) {
+  let start = null;
+  for (const c of g.cells()) if (!start || c[1] < start[1]) start = c;
+  if (!start) return 0;
+  const keep = new Set([g.k(start[0], start[1], start[2])]); const st = [start];
+  while (st.length) {
+    const [x, y, z] = st.pop();
+    for (const [dx, dy, dz] of [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]]) {
+      const k = g.k(x + dx, y + dy, z + dz);
+      if (g.m.has(k) && !keep.has(k)) { keep.add(k); st.push([x + dx, y + dy, z + dz]); }
+    }
+  }
+  let n = 0; for (const k of [...g.m.keys()]) if (!keep.has(k)) { g.m.delete(k); n++; }
+  return n;
+}
+
+/* ---------------- Mesh ----------------
+   Culled-face mesher over a rectilinear grid: cell (i,j,k) spans xs[i]..xs[i+1] etc.
+   Non-uniform grid lines let the tab, ridge and slot sit at exact millimetre sizes. */
+const DIRS = [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+function meshFromGrid(g, xs, ys, zs, split = false) {
+  const verts = [], vmap = new Map(), tris = [], triColor = [];
+  const vid = (x, y, z) => { const k = (x + 128) * 262144 + (y + 64) * 512 + (z + 128); let i = vmap.get(k); if (i === undefined) { i = verts.length / 3; verts.push(xs ? xs[x] : x, ys ? ys[y] : y, zs ? zs[z] : z); vmap.set(k, i); } return i; };
+  for (const [x, y, z, c] of g.cells()) {
+    for (const [dx, dy, dz] of DIRS) {
+      const nb = g.fget(x + dx, y + dy, z + dz);
+      if (nb !== undefined && (!split || nb === c)) continue; // split: keep faces between colors, one closed shell per color
+      const ax = dx !== 0 ? 0 : dy !== 0 ? 1 : 2;
+      const u = (ax + 1) % 3, v = (ax + 2) % 3;
+      const base = [x, y, z]; if (dx + dy + dz > 0) base[ax] += 1;
+      const q = [];
+      for (const [a, b] of [[0, 0], [1, 0], [1, 1], [0, 1]]) { const p = base.slice(); p[u] += a; p[v] += b; q.push(p); }
+      if (dx + dy + dz < 0) q.reverse();
+      const ids = q.map(p => vid(p[0], p[1], p[2]));
+      tris.push(ids[0], ids[1], ids[2], ids[0], ids[2], ids[3]); triColor.push(c, c);
+    }
+  }
+  return { verts, tris, triColor };
+}
+const lin = (a, c, st) => { const o = []; for (let k = a; k <= c; k++) o.push(k * st); return o; };
+const uniq = a => a.sort((p, q) => p - q).filter((v, i, arr) => i === 0 || v - arr[i - 1] > 1e-6);
+function rectGrid(xs, ys, zs, sample) {
+  const G = new Grid(1);
+  for (let i = 0; i < xs.length - 1; i++) for (let j = 0; j < ys.length - 1; j++) for (let k = 0; k < zs.length - 1; k++) {
+    const c = sample((xs[i] + xs[i + 1]) / 2, (ys[j] + ys[j + 1]) / 2, (zs[k] + zs[k + 1]) / 2);
+    if (c) G.fset(i, j, k, c);
+  }
+  return G;
+}
+
+/* Build the printable parts: the figure (with a snap tab under its feet) and the base (with a matching slot).
+   Units are mm in viewer space: x right, y up, z toward the front. The base top is at y = 0. */
+const FITS = { tight: 0.1, normal: 0.15, loose: 0.25 };
+/* Build the printable parts. The figure is a flat pixel standee: a black outline plate with the colored
+   pixels raised slightly on the front, plus a snap tab under the feet. The base has a matching slot.
+   Units are mm in viewer space: x right, y up, z toward the front; the figure's back is z = 0 and the base top is y = 0. */
+function buildParts(s) {
+  const sp = makeSprite(s);
+  const ps = sp.ps || voxelSize(s.scale) / 2;
+  const Tp = Math.min(s.scale === "54" ? 4.6 : 3.2, Math.max(2.4, Math.round(ps * 3.4 / 0.2) * 0.2)), Rz = s.scale === "54" ? 0.6 : 0.4;
+  const bsp = s.backColor ? makeSprite(s, true) : null, Rb = 0.4;
+  const hasBase = s.baseShape !== "none";
+  const fit = FITS[s.fit] ?? 0.15;
+  const bh = Number(s.baseH), sd = bh - 1.2, th = sd - 0.2;
+  const tw = Math.min((2 * sp.hip + 2) * ps, Number(s.baseSize) - 8), tt = Tp;
+  const rh = 0.4, ry0 = -th + 0.6, ry1 = -th + 1.4, rx = tw / 2 - 1;
+  // ground strip so the tab is fully joined to the plate
+  const n = Math.ceil(tw / 2 / ps);
+  for (let x = -n; x < n; x++) if (!sp.pix.has(sp.key(x, 0))) sp.pix.set(sp.key(x, 0), "ink");
+  const minX = Math.min(sp.minX, -n), maxX = Math.max(sp.maxX, n - 1);
+  let xs = lin(minX, maxX + 1, ps), ys = lin(0, sp.maxY + 1, ps), zs = bsp ? [0, Rb, Tp, Tp + Rz] : [0, Tp, Tp + Rz];
+  // Back face colors come from a back-view sprite; the silhouette outline stays black on both faces.
+  const backColor = (x, y, m) => {
+    if (!bsp) return "ink";
+    if (m === "ink" && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => !sp.pix.has(sp.key(x + dx, y + dy)))) return "ink";
+    return bsp.pix.get(bsp.key(x, y)) || "ink";
+  };
+  if (hasBase) { xs = uniq([...xs, -tw / 2, tw / 2, -rx, rx]); ys = uniq([...ys, -th, ry0, ry1]); zs = uniq([...zs, Tp + rh]); }
+  const G = rectGrid(xs, ys, zs, (cx, cy, cz) => {
+    if (cy > 0) {
+      const ix = Math.floor(cx / ps), iy = Math.floor(cy / ps), m = sp.pix.get(sp.key(ix, iy));
+      if (!m) return null;
+      if (cz > (m === "ink" ? Tp : Tp + Rz)) return null;
+      if (bsp && cz < Rb) return backColor(ix, iy, m);
+      return cz < Tp ? "ink" : m;
+    }
+    if (!hasBase) return null;
+    if (cy > -th && Math.abs(cx) < tw / 2 && cz > 0 && cz < tt) return "ink";
+    if (cy > ry0 && cy < ry1 && Math.abs(cx) < rx && cz > tt && cz < tt + rh) return "ink";
+    return null;
+  });
+  makeManifold(G); dropFloaters(G);
+  const fig = meshFromGrid(G, xs, ys, zs);
+
+  let base = null;
+  if (hasBase) {
+    const sb = voxelSize(s.scale), r = Number(s.baseSize) / 2, Rn = Math.ceil(r / sb) + 1, bev = Math.min(0.8, bh / 4), zc = tt / 2;
+    const g0 = bh - th + 0.45, g1 = bh - th + 1.55, gd = 0.6, sx = tw / 2 + fit, sz0 = -fit, sz1 = tt + fit;
+    const bxs = uniq([...lin(-Rn, Rn, sb), -sx, sx]), bzs = uniq([...lin(-Rn, Rn, sb).map(v => v + zc), sz0, sz1, sz1 + gd]), bys = uniq([0, bh - sd, g0, g1, bh - bev, bh]);
+    const inside = (qx, qz, rr) => {
+      if (s.baseShape === "square") return Math.abs(qx) <= rr && Math.abs(qz) <= rr;
+      if (s.baseShape === "hex") { const ax = Math.abs(qx), az = Math.abs(qz); return az <= rr * 0.866 && ax * 0.866 + az * 0.5 <= rr * 0.866; }
+      return qx * qx + qz * qz <= rr * rr;
+    };
+    const BG = rectGrid(bxs, bys, bzs, (cx, cy, cz) => {
+      const top = cy > bh - bev, ix = Math.floor(cx / sb), iz = Math.floor((cz - zc) / sb);
+      if (!inside((ix + 0.5) * sb, (iz + 0.5) * sb, top ? r - sb : r)) return null;
+      if (cy > bh - sd && Math.abs(cx) < sx && cz > sz0 && cz < sz1) return null;
+      if (cy > g0 && cy < g1 && Math.abs(cx) < sx && cz > sz1 && cz < sz1 + gd) return null;
+      const h = ((ix * 73856093) ^ (iz * 19349663)) >>> 0;
+      if (s.marks && cy > bh - 0.9 && cz - zc > r - 2.2) for (let k = 0; k < s.marks; k++) if (Math.abs(cx - (k - (s.marks - 1) / 2) * 2.6) < 0.7) return null; // 1-3 notches mark the fit
+      return "base";
+    });
+    makeManifold(BG);
+    const m = meshFromGrid(BG, bxs, bys, bzs);
+    for (let i = 1; i < m.verts.length; i += 3) m.verts[i] -= bh;
+    base = m;
+  }
+  let colorMap = null;
+  if (s.maxColors && s.maxColors !== "all" && !(TEMPLATES[s.tpl] && s.maxColors === "5")) colorMap = limitColors(fig, Number(s.maxColors));
+  let topY = 0; for (let i = 1; i < fig.verts.length; i += 3) topY = Math.max(topY, fig.verts[i]);
+  return { fig, figGrid: { G, xs, ys, zs }, colorMap, base, backColor: !!bsp, vs: ps, vf: ps, flat: true, th: hasBase ? th : 0, z0: 0, bh, fit, figHeight: topY, Tp, Rz, sprite: sp };
+}
+
+/* Limit the figure to n filaments (black outline included): repeatedly fold the least-used color
+   into its nearest remaining color until only n are left. */
+function limitColors(mesh, n) {
+  const area = new Map();
+  for (const c of mesh.triColor) area.set(c, (area.get(c) || 0) + 1);
+  const map = new Map([...area.keys()].map(c => [c, c]));
+  const dist = (a, b) => { const [r1, g1, b1] = hexRgb(colorOf(a)), [r2, g2, b2] = hexRgb(colorOf(b)), rm = (r1 + r2) / 2;
+    return (2 + rm / 256) * (r1 - r2) ** 2 + 4 * (g1 - g2) ** 2 + (2 + (255 - rm) / 256) * (b1 - b2) ** 2; };
+  let live = [...area.keys()];
+  while (live.length > Math.max(1, n)) {
+    const keep = c => area.get(c) * (c.startsWith("skin") ? 8 : 1); // faces and hands matter more than their pixel count
+    const victim = live.filter(c => c !== "ink").sort((a, b) => keep(a) - keep(b))[0];
+    if (!victim) break;
+    const target = live.filter(c => c !== victim).sort((a, b) => dist(victim, a) - dist(victim, b))[0];
+    area.set(target, area.get(target) + area.get(victim));
+    for (const [k, v] of map) if (v === victim) map.set(k, target);
+    live = live.filter(c => c !== victim);
+  }
+  mesh.triColor = mesh.triColor.map(c => map.get(c));
+  return map;
+}
+
+/* Printer space (mm, Z up). Flat-back figures lie on their back; the base sits upright beside them. */
+function printObjects(parts) {
+  const out = [];
+  const bbox = P => { const b = [1e9, -1e9, 1e9, -1e9, 1e9, -1e9]; for (let i = 0; i < P.length; i += 3) for (let a = 0; a < 3; a++) { b[a * 2] = Math.min(b[a * 2], P[i + a]); b[a * 2 + 1] = Math.max(b[a * 2 + 1], P[i + a]); } return b; };
+  const V = parts.fig.verts, P = new Float32Array(V.length);
+  for (let i = 0; i < V.length; i += 3) {
+    if (parts.flat) { P[i] = V[i]; P[i + 1] = V[i + 1]; P[i + 2] = V[i + 2]; }
+    else { P[i] = V[i]; P[i + 1] = -V[i + 2]; P[i + 2] = V[i + 1]; }
+  }
+  let fb = bbox(P);
+  const fy = (fb[2] + fb[3]) / 2, zShift = fb[4];
+  for (let i = 0; i < P.length; i += 3) { P[i + 1] -= fy; P[i + 2] -= fb[4]; }
+  fb = bbox(P);
+  out.push({ name: "figure", P, mesh: parts.fig, colors: figureColorParts(parts, fy, zShift) });
+  if (parts.base) {
+    const BV = parts.base.verts, Q = new Float32Array(BV.length);
+    let minX = 1e9; for (let i = 0; i < BV.length; i += 3) minX = Math.min(minX, BV[i]);
+    for (let i = 0; i < BV.length; i += 3) { Q[i] = BV[i] - minX + fb[1] + 5; Q[i + 1] = -BV[i + 2]; Q[i + 2] = BV[i + 1] + parts.bh; }
+    out.push({ name: "base", P: Q, mesh: parts.base });
+  }
+  return out;
+}
+
+/* Two same-color cells that touch only along an edge make a non-manifold edge in that color's shell.
+   Recolor one of the two cells beside them so every color's shell is a clean closed solid. */
+function fixDiagonals(M) {
+  for (let pass = 0; pass < 30; pass++) {
+    let changed = 0;
+    for (const [x, y, z, c] of [...M.cells()]) for (const [a, b] of [[0, 1], [0, 2], [1, 2]]) for (const sb of [1, -1]) {
+      const d = [0, 0, 0]; d[a] = 1; d[b] = sb;
+      const q = [x + d[0], y + d[1], z + d[2]];
+      if (M.fget(...q) !== c) continue;
+      const e1 = [x, y, z]; e1[a] += 1; const e2 = [x, y, z]; e2[b] += sb;
+      const c1 = M.fget(...e1), c2 = M.fget(...e2);
+      if (c1 === c || c2 === c) continue;
+      // black only ever grows, so this always settles: a black diagonal takes a neighbor cell,
+      // a colored diagonal next to black gives one of its two cells to black
+      if (c !== "ink" && (c1 === "ink" || c2 === "ink")) M.fset(...q, "ink");
+      else if (c1 !== undefined) M.fset(...e1, c); else if (c2 !== undefined) M.fset(...e2, c); else continue;
+      changed++;
+    }
+    if (!changed) break;
+  }
+}
+/* One closed mesh per filament color, in print space, so any slicer can assign a filament to each part. */
+function figureColorParts(parts, fy, zShift) {
+  if (!parts.figGrid) return null;
+  const { G, xs, ys, zs } = parts.figGrid, map = parts.colorMap;
+  const M = new Grid(1);
+  for (const [k, c] of G.m) M.m.set(k, map ? (map.get(c) || c) : c);
+  fixDiagonals(M);
+  const m = meshFromGrid(M, xs, ys, zs, true), groups = new Map();
+  for (let t = 0; t < m.triColor.length; t++) { const c = m.triColor[t]; if (!groups.has(c)) groups.set(c, []); groups.get(c).push(t); }
+  const out = [];
+  for (const [c, list] of groups) {
+    const remap = new Map(), verts = [], tris = [];
+    for (const t of list) for (let k = 0; k < 3; k++) {
+      const v = m.tris[t * 3 + k]; let i = remap.get(v);
+      if (i === undefined) { i = verts.length / 3; remap.set(v, i); verts.push(m.verts[v * 3], m.verts[v * 3 + 1] - fy, m.verts[v * 3 + 2] - zShift); }
+      tris.push(i);
+    }
+    out.push({ slot: c, P: new Float32Array(verts), mesh: { verts, tris, triColor: tris.filter((_, i) => i % 3 === 0).map(() => c) } });
+  }
+  // black (the plate) first, then the biggest colors
+  return out.sort((a, b) => (b.slot === "ink") - (a.slot === "ink") || b.mesh.tris.length - a.mesh.tris.length);
+}
+const colorName = sl => sl === "ink" ? "black" : sl.startsWith("c_") ? "#" + sl.slice(2) : sl;
+
+/* ---------------- Exporters ---------------- */
+function stlBinary(P, tris) {
+  const n = tris.length / 3, buf = new ArrayBuffer(84 + n * 50), dv = new DataView(buf);
+  const head = "Bitforge voxel mini (mm, Z up)"; for (let i = 0; i < head.length; i++) dv.setUint8(i, head.charCodeAt(i));
+  dv.setUint32(80, n, true);
+  let o = 84;
+  for (let t = 0; t < n; t++) {
+    const a = tris[t * 3] * 3, b = tris[t * 3 + 1] * 3, c = tris[t * 3 + 2] * 3;
+    const ux = P[b] - P[a], uy = P[b + 1] - P[a + 1], uz = P[b + 2] - P[a + 2];
+    const wx = P[c] - P[a], wy = P[c + 1] - P[a + 1], wz = P[c + 2] - P[a + 2];
+    let nx = uy * wz - uz * wy, ny = uz * wx - ux * wz, nz = ux * wy - uy * wx; const l = Math.hypot(nx, ny, nz) || 1;
+    dv.setFloat32(o, nx / l, true); dv.setFloat32(o + 4, ny / l, true); dv.setFloat32(o + 8, nz / l, true); o += 12;
+    for (const i of [a, b, c]) { dv.setFloat32(o, P[i], true); dv.setFloat32(o + 4, P[i + 1], true); dv.setFloat32(o + 8, P[i + 2], true); o += 12; }
+    o += 2;
+  }
+  return new Uint8Array(buf);
+}
+const f4 = v => (Math.round(v * 10000) / 10000).toString();
+function objFiles(objs, colorOf, base) {
+  const slots = [...new Set(objs.flatMap(o => o.mesh.triColor))];
+  let mtl = "# Bitforge mini materials\n";
+  for (const sl of slots) { const [r, g, b] = hexRgb(colorOf(sl)); mtl += `newmtl ${sl}\nKd ${(r / 255).toFixed(4)} ${(g / 255).toFixed(4)} ${(b / 255).toFixed(4)}\nKa 0 0 0\nKs 0 0 0\nd 1\nillum 1\n\n`; }
+  const lines = [`# Bitforge voxel mini, millimetres, Z up`, `mtllib ${base}.mtl`];
+  let off = 1;
+  for (const { name, P, mesh } of objs) {
+    lines.push(`o ${name}`);
+    for (let i = 0; i < P.length; i += 3) lines.push(`v ${f4(P[i])} ${f4(P[i + 1])} ${f4(P[i + 2])}`);
+    for (const sl of new Set(mesh.triColor)) {
+      lines.push(`usemtl ${sl}`);
+      for (let t = 0; t < mesh.triColor.length; t++) if (mesh.triColor[t] === sl) lines.push(`f ${mesh.tris[t * 3] + off} ${mesh.tris[t * 3 + 1] + off} ${mesh.tris[t * 3 + 2] + off}`);
+    }
+    off += P.length / 3;
+  }
+  return { obj: lines.join("\n") + "\n", mtl };
+}
+/* 3MF: the figure is one object made of one closed volume per filament color (PrusaSlicer/Orca/Bambu
+   load it as a multi-part object, with the parts already named and given filament 1, 2, 3...); the
+   base is a second object. Per-triangle display colors are included too for viewers. */
+function threeMF(objs, colorOf, title) {
+  const vols = objs.map(o => o.colors && o.colors.length ? o.colors.map(c => ({ slot: c.slot, P: c.P, mesh: c.mesh })) : [{ slot: o.mesh.triColor[0], P: o.P, mesh: o.mesh, mixed: true }]);
+  const slots = [...new Set(objs.flatMap(o => o.mesh.triColor).concat(vols.flat().map(v => v.slot)))].sort((a, b) => (b === "ink") - (a === "ink"));
+  const idx = new Map(slots.map((s, i) => [s, i]));
+  const figSlots = [...new Set((vols[0] || []).map(v => v.slot))].sort((a, b) => (b === "ink") - (a === "ink"));
+  const extruder = sl => Math.max(1, figSlots.indexOf(sl) + 1);
+  const esc = s => s.replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
+  const parts = [`<?xml version="1.0" encoding="UTF-8"?>\n<model unit="millimeter" xml:lang="en-US" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">\n<metadata name="Title">${esc(title)}</metadata>\n<metadata name="Application">Bitforge Mini Maker</metadata>\n<resources>\n<basematerials id="1">\n`];
+  for (const sl of slots) parts.push(`<base name="${esc(colorName(sl))}" displaycolor="${colorOf(sl).toUpperCase()}FF"/>\n`);
+  parts.push(`</basematerials>\n`);
+  const cfg = [`<?xml version="1.0" encoding="UTF-8"?>\n<config>\n`];
+  objs.forEach(({ name }, n) => {
+    const V = vols[n];
+    parts.push(`<object id="${n + 2}" type="model" pid="1" pindex="${idx.get(V[0].slot)}" name="${esc(title + " " + name)}">\n<mesh>\n<vertices>\n`);
+    for (const v of V) for (let i = 0; i < v.P.length; i += 3) parts.push(`<vertex x="${f4(v.P[i])}" y="${f4(v.P[i + 1])}" z="${f4(v.P[i + 2])}"/>\n`);
+    parts.push(`</vertices>\n<triangles>\n`);
+    cfg.push(` <object id="${n + 2}" instances_count="1">\n  <metadata type="object" key="name" value="${esc(title + " " + name)}"/>\n`);
+    let voff = 0, toff = 0;
+    for (const v of V) {
+      const nt = v.mesh.tris.length / 3;
+      for (let t = 0; t < nt; t++) parts.push(`<triangle v1="${v.mesh.tris[t * 3] + voff}" v2="${v.mesh.tris[t * 3 + 1] + voff}" v3="${v.mesh.tris[t * 3 + 2] + voff}" pid="1" p1="${idx.get(v.mixed ? v.mesh.triColor[t] : v.slot)}"/>\n`);
+      const ex = name === "figure" ? extruder(v.slot) : 1;
+      cfg.push(`  <volume firstid="${toff}" lastid="${toff + nt - 1}">\n   <metadata type="volume" key="name" value="${esc(name === "figure" ? colorName(v.slot) + " " + colorOf(v.slot) : name)}"/>\n   <metadata type="volume" key="extruder" value="${ex}"/>\n  </volume>\n`);
+      voff += v.P.length / 3; toff += nt;
+    }
+    cfg.push(` </object>\n`);
+    parts.push(`</triangles>\n</mesh>\n</object>\n`);
+  });
+  cfg.push(`</config>\n`);
+  parts.push(`</resources>\n<build>\n${objs.map((_, n) => `<item objectid="${n + 2}"/>`).join("\n")}\n</build>\n</model>\n`);
+  const ct = `<?xml version="1.0" encoding="UTF-8"?>\n<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/><Default Extension="config" ContentType="text/xml"/></Types>`;
+  const rels = `<?xml version="1.0" encoding="UTF-8"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Target="/3D/3dmodel.model" Id="rel0" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/></Relationships>`;
+  return zip([["[Content_Types].xml", ct], ["_rels/.rels", rels], ["3D/3dmodel.model", parts.join("")], ["Metadata/Slic3r_PE_model.config", cfg.join("")]]);
+}
+/* Minimal store-only ZIP writer */
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(b) { let c = 0xffffffff; for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; }
+function zip(files) {
+  const enc = new TextEncoder(), chunks = [], central = []; let off = 0;
+  const now = new Date(), dt = ((now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1)), dd = (((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate());
+  for (const [name, data] of files) {
+    const nb = enc.encode(name), db = typeof data === "string" ? enc.encode(data) : data, crc = crc32(db);
+    const h = new DataView(new ArrayBuffer(30));
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true);
+    h.setUint16(10, dt, true); h.setUint16(12, dd, true); h.setUint32(14, crc, true); h.setUint32(18, db.length, true); h.setUint32(22, db.length, true);
+    h.setUint16(26, nb.length, true); h.setUint16(28, 0, true);
+    chunks.push(new Uint8Array(h.buffer), nb, db);
+    const c = new DataView(new ArrayBuffer(46));
+    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true); c.setUint16(10, 0, true);
+    c.setUint16(12, dt, true); c.setUint16(14, dd, true); c.setUint32(16, crc, true); c.setUint32(20, db.length, true); c.setUint32(24, db.length, true);
+    c.setUint16(28, nb.length, true); c.setUint32(42, off, true);
+    central.push(new Uint8Array(c.buffer), nb);
+    off += 30 + nb.length + db.length;
+  }
+  const cdSize = central.reduce((a, b) => a + b.length, 0);
+  const e = new DataView(new ArrayBuffer(22));
+  e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, cdSize, true); e.setUint32(16, off, true);
+  const all = [...chunks, ...central, new Uint8Array(e.buffer)], total = all.reduce((a, b) => a + b.length, 0), out = new Uint8Array(total);
+  let p = 0; for (const a of all) { out.set(a, p); p += a.length; }
+  return out;
+}
+
+/* ---------------- Text parser ---------------- */
+const COLOR_WORDS = {
+  red: "#b3262b", crimson: "#9c1c2c", scarlet: "#c8202a", maroon: "#6e1d24", blue: "#2f55b8", navy: "#22306b", azure: "#3f86d8", sky: "#7fb6e8",
+  green: "#3d7a35", emerald: "#1f8a5a", olive: "#6b7a32", forest: "#2d5a2b", purple: "#6a3a9a", violet: "#7e4cc0", lavender: "#a993d6",
+  black: "#25262b", white: "#ecebe6", grey: "#80858f", gray: "#80858f", silver: "#b9c0cb", gold: "#d8aa36", golden: "#d8aa36",
+  bronze: "#a8743a", copper: "#b8693c", brown: "#6b4428", tan: "#b89068", orange: "#d9762a", yellow: "#e2c34a", pink: "#e08aa8",
+  teal: "#2b8a88", cyan: "#3cc1d1", blonde: "#e3c46e", blond: "#e3c46e", ginger: "#c0612a", auburn: "#8e3b22", pale: "#f2d6c0", dark: "#3a2f2a",
+};
+const NOUN_SLOT = {
+  hair: "hair", beard: "hair", cloak: "secondary", cape: "secondary", hood: "secondary", trim: "secondary", sash: "secondary",
+  robe: "primary", robes: "primary", tunic: "primary", clothes: "primary", shirt: "primary", outfit: "primary", coat: "primary", hat: "primary", pants: "primary",
+  armor: "metal", armour: "metal", plate: "metal", helmet: "metal", helm: "metal", sword: "metal", blade: "metal", steel: "metal",
+  skin: "skin", scales: "skin", leather: "leather", boots: "leather", belt: "leather",
+  magic: "gem", orb: "gem", gem: "gem", crystal: "gem", flame: "gem", base: "base", bone: "bone", skull: "bone", gold: "trim", trimmings: "trim",
+};
+const RACE_WORDS = { human: "human", man: "human", woman: "human", elf: "elf", elven: "elf", elvish: "elf", dwarf: "dwarf", dwarven: "dwarf", halfling: "halfling", hobbit: "halfling", gnome: "gnome", orc: "orc", orcish: "orc", "half-orc": "orc", goblin: "orc", tiefling: "tiefling", demon: "tiefling", dragonborn: "dragonborn", dragon: "dragonborn", lizardfolk: "dragonborn", kobold: "dragonborn" };
+const CLASS_WORDS = { fighter: "fighter", warrior: "fighter", knight: "fighter", soldier: "fighter", barbarian: "barbarian", berserker: "barbarian", wizard: "wizard", mage: "wizard", sorcerer: "wizard", warlock: "wizard", witch: "wizard", cleric: "cleric", priest: "cleric", monk: "cleric", druid: "ranger", rogue: "rogue", thief: "rogue", assassin: "rogue", ranger: "ranger", hunter: "ranger", archer: "ranger", paladin: "paladin", templar: "paladin" };
+const WEAPON_WORDS = { sword: "sword", longsword: "sword", blade: "sword", rapier: "sword", axe: "axe", greataxe: "axe", hammer: "hammer", warhammer: "hammer", maul: "hammer", mace: "mace", flail: "mace", club: "mace", staff: "staff", stave: "staff", wand: "staff", spear: "spear", lance: "spear", trident: "spear", polearm: "spear", dagger: "dagger", knife: "dagger", daggers: "dagger", bow: "bow", longbow: "bow", unarmed: "none" };
+const HEAD_WORDS = { helmet: "helmet", helm: "helmet", horned: "horned", horns: "horned", hat: "wizard", hood: "hood", hooded: "hood", crown: "crown", king: "crown", queen: "crown", cap: "cap", beret: "cap", feather: "cap" };
+
+const MONSTER_WORDS = { skeleton: "skeleton", skeletal: "skeleton", undead: "skeleton", bones: "skeleton", zombie: "zombie", ghoul: "zombie", rotting: "zombie", cultist: "cultist", cult: "cultist", acolyte: "cultist", lich: "lich", necromancer: "lich" };
+const CLASS_TPL = { fighter: "fighter", paladin: "fighter", barbarian: "barbarian", wizard: "wizard", cleric: "cleric", rogue: "rogue", ranger: "ranger" };
+function parseText(text, cur) {
+  const words = text.toLowerCase().match(/[a-z]+(?:-[a-z]+)?/g) || [];
+  const s = structuredClone(cur), notes = [];
+  let race = null, cls = null, monster = null;
+  for (const w of words) { if (RACE_WORDS[w] && !race) race = RACE_WORDS[w]; if (CLASS_WORDS[w] && !cls) cls = CLASS_WORDS[w]; if (MONSTER_WORDS[w] && !monster) monster = MONSTER_WORDS[w]; }
+  if (race) applyRace(s, race);
+  if (monster) applyTemplate(s, monster);
+  else if (s.tpl === "builder") { if (cls) applyClass(s, cls); if (race) applyRace(s, race); }
+  else if (cls) applyTemplate(s, CLASS_TPL[cls] || "fighter");
+  else if (TEMPLATES[s.tpl] && TEMPLATES[s.tpl].monster && race) applyTemplate(s, "fighter");
+  else if (race && TEMPLATES[s.tpl]) s.colors.skin = RACES[race].skin;
+  const has = w => words.includes(w);
+  const loose = [];
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i], nx = words[i + 1], nx2 = words[i + 2];
+    if (w === "named" || w === "called") { const m = text.match(new RegExp(w + "\\s+([A-Za-z][\\w'-]*)", "i")); if (m) s.name = m[1]; continue; }
+    if (COLOR_WORDS[w]) {
+      const noun = [nx, nx2].find(n => n && NOUN_SLOT[n]);
+      if (noun) {
+        let slot = NOUN_SLOT[noun];
+        if (noun === "armor" || noun === "armour") { if (s.outfit !== "plate") slot = "primary"; }
+        s.colors[slot] = COLOR_WORDS[w]; notes.push(`${w} ${noun}`);
+      } else if (w === "blonde" || w === "blond" || w === "ginger" || w === "auburn") s.colors.hair = COLOR_WORDS[w];
+      else loose.push(w);
+      continue;
+    }
+    if (WEAPON_WORDS[w]) {
+      const wp = WEAPON_WORDS[w];
+      if (w === "daggers" || (wp === "dagger" && (words[i - 1] === "two" || words[i - 1] === "dual" || words[i - 1] === "twin"))) { s.weapon = "dagger"; s.offhand = "dagger"; }
+      else if (s._mainSet && wp !== "bow" && s.weapon !== "bow") { if (wp === "dagger") s.offhand = "dagger"; }
+      else { s.weapon = wp; s._mainSet = true; if (wp === "bow") s.offhand = "none"; }
+    }
+    if (w === "shield") s.offhand = "shield";
+    if (w === "torch" || w === "lantern") s.offhand = "torch";
+    if (HEAD_WORDS[w]) { const h = HEAD_WORDS[w]; if (!(h === "wizard" && (nx === "feather" || words[i - 1] === "feathered"))) s.head = h; if (w === "horned" || (w === "horns" && s.head === "horned")) s.head = s.race === "tiefling" ? s.head : "horned"; }
+    if (w === "feathered") s.head = "cap";
+    if (w === "cape" || w === "cloak" || w === "cloaked" || w === "caped") s.cape = true;
+    if (w === "plate" || w === "armored" || w === "armoured" || w === "knight") s.outfit = "plate";
+    if (w === "leather" && nx !== "boots") s.outfit = s.outfit === "plate" ? "plate" : "leather";
+    if (w === "robe" || w === "robes" || w === "robed") s.outfit = "robe";
+    if (w === "shirtless" || w === "bare" || w === "topless") s.outfit = "bare";
+    if (w === "bald") s.hair = "none";
+    if (w === "mohawk") s.hair = "mohawk";
+    if (w === "long" && (nx === "hair" || nx2 === "hair")) s.hair = "long";
+    if (w === "short" && (nx === "hair" || nx2 === "hair")) s.hair = "short";
+    if (w === "beard" || w === "bearded") s.beard = words[i - 1] === "long" || words[i - 1] === "big" || words[i - 1] === "braided" ? "long" : (s.beard === "long" ? "long" : "short");
+    if (w === "beardless" || w === "clean-shaven" || w === "shaven") s.beard = "none";
+    if ((w === "no" || w === "without") && nx) {
+      if (nx === "cape" || nx === "cloak") s.cape = false;
+      if (nx === "beard") s.beard = "none";
+      if (nx === "shield") s.offhand = "none";
+      if (nx === "helmet" || nx === "hat" || nx === "hood") s.head = "none";
+      if (nx === "hair") s.hair = "none";
+      i++;
+    }
+  }
+  if (loose[0]) s.colors.primary = COLOR_WORDS[loose[0]];
+  if (loose[1]) s.colors.secondary = COLOR_WORDS[loose[1]];
+  delete s._mainSet;
+  if (s.weapon === "bow") s.offhand = "none";
+  return s;
+}
+function applyClass(s, cls) {
+  const C = CLASSES[cls]; s.cls = cls;
+  Object.assign(s, { weapon: C.weapon, offhand: C.offhand, outfit: C.outfit, head: C.head, cape: C.cape });
+  s.colors.primary = C.primary; s.colors.secondary = C.secondary;
+}
+function applyRace(s, race) {
+  const R = RACES[race]; s.race = race; s.colors.skin = R.skin;
+  s.beard = R.beard || "none";
+  if (race === "dragonborn") { s.hair = "none"; s.beard = "none"; }
+}
+
+/* ---------------- UI ---------------- */
+const $ = id => document.getElementById(id);
+function fillSelect(el, map) { el.innerHTML = Object.entries(map).map(([v, l]) => `<option value="${v}">${typeof l === "string" ? l : l.label}</option>`).join(""); }
+fillSelect($("race"), RACES); fillSelect($("cls"), CLASSES);
+{
+  const grp = (label, keys) => `<optgroup label="${label}">${keys.map(k => `<option value="${k}">${TEMPLATES[k].label}</option>`).join("")}</optgroup>`;
+  const all = Object.keys(TEMPLATES);
+  $("tpl").innerHTML = grp("Heroes", all.filter(k => !TEMPLATES[k].monster)) + grp("Monsters", all.filter(k => TEMPLATES[k].monster)) +
+    `<optgroup label="Other"><option value="builder">Mix &amp; match (pick gear)</option><option value="upload">Upload your own pixel art</option><option value="custom" disabled>Your edited figure</option></optgroup>`;
+}
+function updateMode() {
+  const T = TEMPLATES[state.tpl];
+  $("builderFields").hidden = state.tpl !== "builder";
+  $("uploadRow").hidden = state.tpl !== "upload";
+  $("raceRow").style.visibility = (state.tpl === "upload" || state.tpl === "custom" || (T && T.monster)) ? "hidden" : "";
+  $("shadingRow").hidden = state.tpl !== "builder";
+  for (const [k] of COLOR_SLOTS) $("c_" + k).closest("label").style.display = state.tpl === "upload" && k !== "base" ? "none" : ""; // uploads keep their own colors
+}
+for (const k of ["outfit", "head", "weapon", "offhand", "hair", "beard"]) fillSelect($(k), OPTS[k]);
+$("swatches").innerHTML = COLOR_SLOTS.map(([k, l]) => `<label class="sw"><input type="color" id="c_${k}" aria-label="${l} color">${l}</label>`).join("");
+
+function syncForm() {
+  $("name").value = state.name;
+  for (const k of ["tpl", "race", "cls", "outfit", "head", "weapon", "offhand", "hair", "beard", "scale", "baseShape", "baseSize", "baseH", "fit", "maxColors"]) $(k).value = state[k];
+  updateMode();
+  $("cape").checked = state.cape; $("shading").checked = state.shading; $("backColor").checked = state.backColor;
+  for (const [k] of COLOR_SLOTS) $("c_" + k).value = state.colors[k];
+  $("offhand").disabled = state.weapon === "bow";
+}
+function readForm() {
+  state.name = $("name").value.trim() || "Hero";
+  for (const k of ["outfit", "head", "weapon", "offhand", "hair", "beard", "scale", "baseShape", "baseSize", "baseH", "fit", "maxColors"]) state[k] = $(k).value;
+  state.cape = $("cape").checked; state.shading = $("shading").checked; state.backColor = $("backColor").checked;
+  for (const [k] of COLOR_SLOTS) state.colors[k] = $("c_" + k).value;
+}
+document.querySelector(".rail").addEventListener("input", e => {
+  const id = e.target.id;
+  if (id === "desc" || id === "upFile") return;
+  if (id === "tpl") { readForm(); state.tpl = e.target.value; if (TEMPLATES[state.tpl]) applyTemplate(state, state.tpl); if (state.tpl === "upload" && !upload) toast("Choose a PNG of your pixel art"); syncForm(); }
+  else if (id === "race") { readForm(); applyRace(state, e.target.value); syncForm(); }
+  else if (id === "cls") { readForm(); applyClass(state, e.target.value); syncForm(); }
+  else readForm();
+  if (state.weapon === "bow") state.offhand = "none";
+  syncForm(); rebuild();
+});
+$("upFile").addEventListener("change", e => {
+  const f = e.target.files && e.target.files[0]; if (!f) return;
+  const url = URL.createObjectURL(f), img = new Image();
+  img.onload = () => {
+    try {
+      upload = readUpload(img); state.tpl = "upload";
+      if (state.name === "Bromli" || !state.name) state.name = f.name.replace(/\.[^.]+$/, "").slice(0, 24) || "Hero";
+      $("upInfo").textContent = `Loaded ${upload.w}×${upload.h} pixels` + (upload.scaleFactor > 1 ? ` (shrunk from ${upload.scaleFactor}× upscale)` : "") + ". Near-black pixels become the black plate.";
+      firstFrame = true; syncForm(); rebuild();
+    } catch (err) { toast(err.message); $("upInfo").textContent = err.message; }
+    URL.revokeObjectURL(url);
+  };
+  img.onerror = () => { toast("Couldn't read that image"); URL.revokeObjectURL(url); };
+  img.src = url;
+});
+$("fromText").addEventListener("click", () => { Object.assign(state, parseText($("desc").value, state)); syncForm(); rebuild(); toast("Built from your description"); });
+$("desc").addEventListener("keydown", e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) $("fromText").click(); });
+const NAMES = ["Bromli", "Kessa", "Varn", "Ilyra", "Thog", "Pip", "Mordecai", "Seraphine", "Grunda", "Ash", "Tamsin", "Orik", "Zyx", "Lark"];
+const pick = o => { const k = Object.keys(o); return k[Math.floor(Math.random() * k.length)]; };
+$("random").addEventListener("click", () => {
+  if (state.tpl !== "builder") {
+    const tp = pick(TEMPLATES); state.race = pick(RACES); applyTemplate(state, tp);
+    const hues = Object.values(COLOR_WORDS); if (Math.random() < 0.7) state.colors.primary = hues[Math.floor(Math.random() * hues.length)];
+    state.name = NAMES[Math.floor(Math.random() * NAMES.length)];
+    syncForm(); rebuild();
+    const T = TEMPLATES[tp];
+    $("desc").value = T.monster ? `A ${T.label.toLowerCase()} named ${state.name}` : `A ${RACES[state.race].label.toLowerCase()} ${tp} named ${state.name}`;
+    return;
+  }
+  applyClass(state, pick(CLASSES)); applyRace(state, pick(RACES));
+  state.hair = pick(OPTS.hair); if (state.race === "dragonborn") state.hair = "none";
+  state.cape = Math.random() < 0.5 || state.cape;
+  state.name = NAMES[Math.floor(Math.random() * NAMES.length)];
+  const hues = Object.values(COLOR_WORDS);
+  state.colors.primary = hues[Math.floor(Math.random() * hues.length)];
+  state.colors.secondary = hues[Math.floor(Math.random() * hues.length)];
+  state.colors.hair = ["#2a1d16", "#5a3a22", "#8a4a22", "#e3c46e", "#c0612a", "#d8d8d8", "#25262b"][Math.floor(Math.random() * 7)];
+  syncForm(); rebuild();
+  $("desc").value = `A ${RACES[state.race].label.toLowerCase()} ${CLASSES[state.cls].label.toLowerCase()} named ${state.name}`;
+});
+
+/* ---------------- Viewer ---------------- */
+const view = $("view");
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+renderer.setClearColor(0x000000, 0);
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+view.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 2000);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.autoRotate = true; controls.autoRotateSpeed = 1.6;
+scene.add(new THREE.HemisphereLight(0xffffff, 0x5a6070, 1.6));
+const key = new THREE.DirectionalLight(0xffffff, 1.9); key.position.set(30, 60, 45); scene.add(key);
+const rim = new THREE.DirectionalLight(0x9fb4ff, 0.7); rim.position.set(-40, 30, -50); scene.add(rim);
+const grid = new THREE.GridHelper(120, 24, 0x7a8394, 0x7a8394); grid.material.transparent = true; grid.material.opacity = 0.25; scene.add(grid);
+let meshObj = null, mono = false, current = null, firstFrame = true;
+
+function hexRgb(h) { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+function shade(hex, f) { const [r, g, b] = hexRgb(hex); const d = v => Math.max(0, Math.min(255, Math.round(v * f))).toString(16).padStart(2, "0"); return "#" + d(r) + d(g) + d(b); }
+function colorOf(slot) {
+  const sfx = slot.slice(-1);
+  if (sfx === "+" || sfx === "-") {
+    const [r, g, b] = hexRgb(colorOf(slot.slice(0, -1)));
+    const f = sfx === "+" ? v => v + (255 - v) * 0.28 : v => v * 0.66;
+    return "#" + [r, g, b].map(v => Math.round(f(v)).toString(16).padStart(2, "0")).join("");
+  }
+  if (slot === "base2") return shade(state.colors.base, 0.78);
+  if (slot === "tab") return state.colors.base;
+  if (slot === "mouth") return shade(state.colors.skin, 0.55);
+  if (slot === "ink") return FIXED.ink;
+  let c = slot.startsWith("c_") ? "#" + slot.slice(2) : slot === "blade" ? mixWhite(state.colors.metal, 0.45) : (state.colors[slot] || FIXED[slot] || "#ff00ff");
+  if (slot !== "base" && slot !== "base2" && slot !== "tab") c = readable(c);
+  return c;
+}
+function mixWhite(hex, t) { return "#" + hexRgb(hex).map(v => Math.round(v + (255 - v) * t).toString(16).padStart(2, "0")).join(""); }
+/* Readable colors: anything dark enough to vanish into the black outline plate is lifted toward white. */
+const READ_MIN = 0.045;
+function readable(hex) { if (relLum(hex) >= READ_MIN) return hex; let t = 0; while (t < 1 && relLum(mixWhite(hex, t)) < READ_MIN) t += 0.02; return mixWhite(hex, t); }
+
+let layoutMode = false;
+function rebuild() {
+  const t0 = performance.now();
+  const parts = buildParts(state);
+  current = parts;
+
+  // Assembled view: figure standing in its base. Print view: parts as exported (Z up -> viewer Y up).
+  let pieces;
+  if (layoutMode) pieces = printObjects(parts).map(o => { const Q = new Float32Array(o.P.length); for (let i = 0; i < Q.length; i += 3) { Q[i] = o.P[i]; Q[i + 1] = o.P[i + 2]; Q[i + 2] = -o.P[i + 1]; } return { P: Q, mesh: o.mesh }; });
+  else pieces = [{ P: parts.fig.verts, mesh: parts.fig }, ...(parts.base ? [{ P: parts.base.verts, mesh: parts.base }] : [])];
+  let nt = 0; for (const p of pieces) nt += p.mesh.tris.length;
+  const pos = new Float32Array(nt * 3), col = new Float32Array(nt * 3), cache = {};
+  let o = 0; const bb = [1e9, -1e9, 1e9, -1e9, 1e9, -1e9];
+  for (const { P, mesh } of pieces) for (let t = 0; t < mesh.tris.length / 3; t++) {
+    const sl = mono ? "mono" : mesh.triColor[t];
+    const c = cache[sl] || (cache[sl] = new THREE.Color(mono ? "#b8bcc4" : colorOf(sl)).convertSRGBToLinear());
+    const i0 = mesh.tris[t * 3] * 3;
+    const jitter = mono ? 1 : 0.95 + ((Math.round(P[i0] * 7 + P[i0 + 1] * 13 + P[i0 + 2] * 5) & 7) / 7) * 0.07;
+    for (let k = 0; k < 3; k++) {
+      const vi = mesh.tris[t * 3 + k] * 3;
+      for (let a = 0; a < 3; a++) { pos[o + a] = P[vi + a]; bb[a * 2] = Math.min(bb[a * 2], P[vi + a]); bb[a * 2 + 1] = Math.max(bb[a * 2 + 1], P[vi + a]); }
+      col[o] = c.r * jitter; col[o + 1] = c.g * jitter; col[o + 2] = c.b * jitter; o += 3;
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute("color", new THREE.BufferAttribute(col, 3));
+  geo.computeVertexNormals();
+  if (meshObj) { meshObj.geometry.dispose(); scene.remove(meshObj); }
+  meshObj = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.75, metalness: 0.0 }));
+  scene.add(meshObj);
+  grid.position.y = bb[2] - 0.01;
+
+  const H = parts.figHeight;
+  if (firstFrame) { frame(bb, H); firstFrame = false; }
+  $("title").textContent = state.name;
+  const fx = [1e9, -1e9]; for (let i = 0; i < parts.fig.verts.length; i += 3) { fx[0] = Math.min(fx[0], parts.fig.verts[i]); fx[1] = Math.max(fx[1], parts.fig.verts[i]); }
+  if (state.tpl !== "upload") { // only show the color pickers this figure actually uses
+    const used = new Set([...parts.fig.triColor, ...(parts.base ? parts.base.triColor : [])].map(c => c.replace(/[+-]$/, "")));
+    if (used.has("blade")) used.add("metal");
+    for (const [k] of COLOR_SLOTS) $("c_" + k).closest("label").style.display = used.has(k) || k === "base" ? "" : "none";
+  }
+  $("stats").innerHTML = [
+    ["Figure", `${H.toFixed(1)} mm tall`], ["Width", `${(fx[1] - fx[0]).toFixed(1)} mm`],
+    ["Base", parts.base ? `${state.baseSize} mm ${state.baseShape}` : "none"],
+    ["Fit gap", parts.base ? `${parts.fit.toFixed(2)} mm` : "-"],
+    ["Colors", `${new Set(parts.fig.triColor.map(colorOf)).size} on figure`], ["Pixel", parts.vf.toFixed(2) + " mm"], ["Thickness", `${parts.Tp.toFixed(1)} + ${parts.Rz.toFixed(1)} mm`], ["Triangles", (nt / 3).toLocaleString()], ["Build", (performance.now() - t0).toFixed(0) + " ms"],
+  ].map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
+}
+function frame(bb, H) {
+  const span = Math.max(bb[1] - bb[0], bb[3] - bb[2], bb[5] - bb[4]);
+  const cx = (bb[0] + bb[1]) / 2, cy = layoutMode ? bb[2] : H * 0.45, cz = (bb[4] + bb[5]) / 2;
+  const d = Math.max(70, span * 3.1);
+  controls.target.set(cx, cy, cz);
+  camera.position.set(cx + d * (layoutMode ? 0.5 : 0.3), cy + d * (layoutMode ? 0.75 : 0.12), cz + d * (layoutMode ? 0.8 : 0.95));
+}
+function resize() { const w = view.clientWidth, h = view.clientHeight; if (!w || !h) return; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+new ResizeObserver(resize).observe(view);
+(function loop() { controls.update(); renderer.render(scene, camera); requestAnimationFrame(loop); })();
+const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+if (reduce.matches) { controls.autoRotate = false; $("spin").setAttribute("aria-pressed", "false"); }
+$("spin").addEventListener("click", e => { controls.autoRotate = !controls.autoRotate; e.currentTarget.setAttribute("aria-pressed", String(controls.autoRotate)); e.currentTarget.textContent = controls.autoRotate ? "Spin" : "Spin off"; });
+$("mono").addEventListener("click", e => { mono = !mono; e.currentTarget.setAttribute("aria-pressed", String(mono)); e.currentTarget.textContent = mono ? "Full color" : "Print gray"; rebuild(); });
+$("layout").addEventListener("click", e => { layoutMode = !layoutMode; e.currentTarget.setAttribute("aria-pressed", String(layoutMode)); e.currentTarget.textContent = layoutMode ? "Assembled" : "Print layout"; firstFrame = true; rebuild(); });
+
+/* ---------------- Export / download ---------------- */
+let toastTimer;
+function toast(msg) { $("toast").textContent = msg; clearTimeout(toastTimer); toastTimer = setTimeout(() => $("toast").textContent = "", 4000); }
+const slug = () => (state.name || "mini").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "mini";
+function buildFiles(which) {
+  const objs = printObjects(current), base = slug() + "-" + state.scale + "mm";
+  const files = [];
+  if (which.includes("stl")) for (const o of objs) files.push([`${base}-${o.name}.stl`, stlBinary(o.P, o.mesh.tris)]);
+  if (which.includes("stl")) for (const o of objs) if (o.colors && o.colors.length > 1) o.colors.forEach((c, i) => files.push([`${base}-figure-by-color/${i + 1}-${colorName(c.slot).replace(/[^a-z0-9]+/gi, "")}.stl`, stlBinary(c.P, c.mesh.tris)]));
+  if (which.includes("3mf")) files.push([base + ".3mf", threeMF(objs, colorOf, state.name)]);
+  if (which.includes("obj")) { const o = objFiles(objs, colorOf, base); files.push([base + ".obj", o.obj], [base + ".mtl", o.mtl]); }
+  return { files, base };
+}
+let downloads = null;
+const inViewer = !!(window.claude && typeof window.claude.use === "function");
+if (inViewer) window.claude.use("downloads").then(d => { downloads = d; }).catch(() => {});
+async function deliver(name, bytes) {
+  if (downloads) {
+    try { await downloads.save({ filename: name, data: new Blob([bytes]) }); toast("Saved " + name); }
+    catch (e) { toast(e && e.code === "declined" ? "Download cancelled" : "Download did not start: " + (e && e.message || "unavailable here")); }
+    return;
+  }
+  const url = URL.createObjectURL(new Blob([bytes], { type: "application/octet-stream" }));
+  const a = document.createElement("a"); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000); toast("Saved " + name);
+}
+// The Claude viewer only allows .zip for model files, so formats are wrapped in a zip there.
+async function exportFormat(which) {
+  const { files, base } = buildFiles(which);
+  if (inViewer || files.length > 1) {
+    const readme = [
+      `${state.name} - Bitforge voxel mini`,
+      `Scale ${state.scale}mm, voxel ${current.vf.toFixed(3)} mm. Units: millimetres, Z up, parts sit on Z = 0.`,
+      `Figure: flat pixel standee, ${current.Tp.toFixed(1)} mm black plate + ${current.Rz.toFixed(1)} mm raised color pixels, already laid on its back for printing. ${current.backColor ? "The back face is colored too (bottom 2 layers), so color changes happen in the first and last layers." : "For multi-color printing, the color changes only happen in the top layers."}`,
+      current.base ? `Base: ${state.baseSize}mm ${state.baseShape}, ${state.baseH}mm tall. Push the figure's tab into the slot until the ridge clicks into the groove. Fit gap ${current.fit} mm per side; choose Tight or Loose if your printer runs fat or thin.` : `No base.`,
+      `Multi-color: the .3mf opens in PrusaSlicer, OrcaSlicer and Bambu Studio as one figure made of one part per color, already set to filament 1 (black), 2, 3... in the order listed in the figure-by-color folder. Match those filament slots to your spools. The figure-by-color STLs are the same parts for any other slicer: load them together as one multi-part object.`,
+      `Suggested slicer settings: 0.4 mm nozzle, 0.2 mm layers (the colored faces are exactly 2 layers), 100% infill, no supports, figure flat on the bed as exported.`,
+      `Recipe: ${JSON.stringify(state)}`, "",
+    ].join("\n");
+    await deliver(base + (which.length > 1 ? "" : "-" + which[0]) + ".zip", zip([...files, ["README.txt", readme]]));
+  } else await deliver(files[0][0], files[0][1]);
+}
+$("dlStl").addEventListener("click", () => exportFormat(["stl"]));
+/* Fit test kit: one black tab stub and three small square bases cut at the tight, normal and loose
+   gaps (1, 2 and 3 notches). Prints in about 20 minutes and tells you which fit to pick. */
+function fitKit() {
+  const objs = [], st = { ...structuredClone(state), tpl: "fittest", baseShape: "square", baseSize: "16", backColor: false, maxColors: "all" };
+  ["tight", "normal", "loose"].forEach((f, i) => {
+    const parts = buildParts({ ...st, fit: f, marks: i + 1 });
+    const po = printObjects(parts);
+    if (i === 0) objs.push({ ...po[0], name: "tab-stub", colors: null });
+    const b = po.find(o => o.name === "base"); if (!b) return;
+    const Q = new Float32Array(b.P); for (let k = 1; k < Q.length; k += 3) Q[k] += (i - 1) * 20;
+    objs.push({ name: `base-${f}-${i + 1}-notch${i ? "es" : ""}`, P: Q, mesh: b.mesh, colors: null });
+  });
+  return objs;
+}
+$("dlFit").addEventListener("click", async () => {
+  const objs = fitKit(), base = `bitforge-fit-test-${state.scale}mm-base${state.baseH}mm`;
+  const files = objs.map(o => [`${base}-${o.name}.stl`, stlBinary(o.P, o.mesh.tris)]);
+  files.push([base + ".3mf", threeMF(objs, colorOf, "Bitforge fit test")]);
+  files.push(["README.txt", [
+    "Bitforge fit test kit",
+    "Print the tab stub and the three bases (about 20 minutes, one color, 0.2 mm layers, no supports).",
+    "Push the stub into each base. Notches on the base edge tell you which is which:",
+    "  1 notch = Tight (0.10 mm gap), 2 notches = Normal (0.15 mm), 3 notches = Loose (0.25 mm).",
+    "Pick the tightest one that goes in fully and clicks without forcing, and choose that Click fit in Bitforge.",
+    `Made for ${state.scale}mm scale and ${state.baseH}mm bases; make a new kit if you change those.`, "",
+  ].join("\n")]);
+  await deliver(base + ".zip", zip(files));
+});
+$("dl3mf").addEventListener("click", () => exportFormat(["3mf"]));
+$("dlObj").addEventListener("click", () => exportFormat(["obj"]));
+$("dlZip").addEventListener("click", () => exportFormat(["stl", "3mf", "obj"]));
+
+/* ---------------- Pixel editor ----------------
+   Works on the figure as it is now (pose, race, colors, 5-color mapping). The silhouette outline is left
+   out while editing and added back automatically, so painting at the edge grows the outline with it. */
+const ED = { side: "front", tool: "pen", slot: "ink", maps: null, undo: [], z: 8, x0: -34, y1: 86, w: 68, h: 87, down: false, ps: 0.6 };
+const stripOutline = pix => {
+  const m = new Map();
+  for (const [k, v] of pix) {
+    const x = Math.floor(k / 2000) - 500, y = (k % 2000) - 500;
+    let edge = false;
+    for (let a = -1; a <= 1 && !edge; a++) for (let b = -1; b <= 1; b++) if (!pix.has(spriteKey(x + a, y + b))) { edge = true; break; }
+    if (!(edge && v === "ink") && y >= 1) m.set(k, v);
+  }
+  return m;
+};
+function edOpen() {
+  if (state.tpl === "custom" && edited) ED.maps = { front: new Map(edited.front), back: new Map(edited.back) }, ED.ps = edited.psRel * (TH[state.scale] || 34);
+  else { const f = makeSprite(state, false), b = makeSprite(state, true); ED.maps = { front: stripOutline(f.pix), back: stripOutline(b.pix) }; ED.ps = f.ps || voxelSize(state.scale) / 2;
+    for (const k of ED.maps.front.keys()) if (!ED.maps.back.has(k)) ED.maps.back.set(k, ED.maps.front.get(k));
+    for (const k of [...ED.maps.back.keys()]) if (!ED.maps.front.has(k)) ED.maps.back.delete(k); }
+  ED.orig = { front: new Map(ED.maps.front), back: new Map(ED.maps.back) };
+  ED.undo = [];
+  const slots = new Set(["ink", ...COLOR_SLOTS.map(c => c[0]).filter(k => k !== "base"), ...ED.maps.front.values(), ...ED.maps.back.values()]);
+  $("edPal").innerHTML = [...slots].map(sl => `<button data-slot="${sl}" title="${sl === "ink" ? "Black" : (COLOR_SLOTS.find(c => c[0] === sl) || [0, colorName(sl)])[1]}" style="background:${colorOf(sl)}" aria-pressed="${sl === ED.slot}"></button>`).join("");
+  edSetSlot(slots.has(ED.slot) ? ED.slot : "ink");
+  $("editor").showModal(); edDraw();
+}
+function edSetSlot(sl) { ED.slot = sl; for (const b of $("edPal").children) b.setAttribute("aria-pressed", String(b.dataset.slot === sl)); $("edSlot").textContent = sl === "ink" ? "Black" : (COLOR_SLOTS.find(c => c[0] === sl) || [0, colorName(sl)])[1]; if (ED.tool === "erase") edTool("pen"); }
+function edTool(t) { ED.tool = t; for (const [id, n] of [["edPen", "pen"], ["edErase", "erase"], ["edFill", "fill"]]) $(id).setAttribute("aria-pressed", String(t === n)); }
+function edDraw() {
+  const cv = $("edCanvas"), box = cv.parentElement, z = ED.z = Math.max(4, Math.min(12, Math.floor(Math.min((box.clientWidth || 520) - 2, 760) / ED.w)));
+  cv.width = ED.w * z; cv.height = ED.h * z;
+  const ctx = cv.getContext("2d"), map = ED.maps[ED.side];
+  const fin = finishSprite(new Map(map), 1);
+  // preview with the outline; shift because finishSprite centers the feet
+  let fl = 1e9, fr = -1e9; for (const k of map.keys()) if ((k % 2000) - 500 === 1) { const x = Math.floor(k / 2000) - 500; fl = Math.min(fl, x); fr = Math.max(fr, x); }
+  const dx = fl < 1e9 ? Math.round((fl + fr + 1) / 2) : 0;
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  for (const [k, v] of fin.pix) { const x = Math.floor(k / 2000) - 500 + dx, y = (k % 2000) - 500; if (map.has(spriteKey(x, y))) continue; ctx.fillStyle = "rgba(20,19,24,0.55)"; ctx.fillRect((x - ED.x0) * z, (ED.y1 - y) * z, z, z); }
+  for (const [k, v] of map) { const x = Math.floor(k / 2000) - 500, y = (k % 2000) - 500; ctx.fillStyle = colorOf(v); ctx.fillRect((x - ED.x0) * z, (ED.y1 - y) * z, z, z); }
+  ctx.strokeStyle = "rgba(128,128,128,0.18)"; ctx.lineWidth = 1; ctx.beginPath();
+  for (let i = 0; i <= ED.w; i++) { ctx.moveTo(i * z + 0.5, 0); ctx.lineTo(i * z + 0.5, cv.height); }
+  for (let j = 0; j <= ED.h; j++) { ctx.moveTo(0, j * z + 0.5); ctx.lineTo(cv.width, j * z + 0.5); }
+  ctx.stroke(); ctx.fillStyle = "rgba(128,128,128,0.35)"; ctx.fillRect(0, (ED.y1 - 0) * z, cv.width, 1); ctx.fillRect((-ED.x0) * z, 0, 1, cv.height);
+}
+function edCell(e) { const r = $("edCanvas").getBoundingClientRect(), z = ED.z * r.width / $("edCanvas").width; return [Math.floor((e.clientX - r.left) / z) + ED.x0, ED.y1 - Math.floor((e.clientY - r.top) / z)]; }
+function edApply(x, y) {
+  if (y < 1 || y > ED.y1 || x < ED.x0 || x >= ED.x0 + ED.w) return;
+  const xs = $("edMirror").checked ? [x, -1 - x] : [x];
+  const me = ED.maps[ED.side], other = ED.maps[ED.side === "front" ? "back" : "front"];
+  for (const xx of xs) {
+    const k = spriteKey(xx, y);
+    if (ED.tool === "erase") { me.delete(k); other.delete(k); }
+    else { if (!other.has(k)) other.set(k, ED.side === "front" || !me.has(k) ? ED.slot : other.get(k)); me.set(k, ED.slot); }
+  }
+}
+function edFill(x, y) {
+  const me = ED.maps[ED.side], k0 = spriteKey(x, y), from = me.get(k0);
+  if (from === undefined || from === ED.slot) return;
+  const st = [[x, y]], seen = new Set();
+  while (st.length) { const [a, b] = st.pop(), k = spriteKey(a, b); if (seen.has(k) || me.get(k) !== from) continue; seen.add(k); me.set(k, ED.slot); st.push([a + 1, b], [a - 1, b], [a, b + 1], [a, b - 1]); }
+}
+const edSnap = () => { ED.undo.push({ front: new Map(ED.maps.front), back: new Map(ED.maps.back) }); if (ED.undo.length > 60) ED.undo.shift(); };
+$("edCanvas").addEventListener("pointerdown", e => { e.preventDefault(); $("edCanvas").setPointerCapture(e.pointerId); edSnap(); const [x, y] = edCell(e); if (ED.tool === "fill") edFill(x, y); else { ED.down = true; edApply(x, y); } edDraw(); });
+$("edCanvas").addEventListener("pointermove", e => { if (!ED.down) return; const [x, y] = edCell(e); edApply(x, y); edDraw(); });
+const edUp = () => { ED.down = false; };
+$("edCanvas").addEventListener("pointerup", edUp); $("edCanvas").addEventListener("pointercancel", edUp);
+$("edPal").addEventListener("click", e => { const b = e.target.closest("button"); if (b) edSetSlot(b.dataset.slot); });
+$("edPen").addEventListener("click", () => edTool("pen")); $("edErase").addEventListener("click", () => edTool("erase")); $("edFill").addEventListener("click", () => edTool("fill"));
+for (const [id, side] of [["edFront", "front"], ["edBack", "back"]]) $(id).addEventListener("click", () => { ED.side = side; $("edFront").setAttribute("aria-pressed", String(side === "front")); $("edBack").setAttribute("aria-pressed", String(side === "back")); edDraw(); });
+$("edUndo").addEventListener("click", () => { const u = ED.undo.pop(); if (u) { ED.maps = u; edDraw(); } });
+$("edReset").addEventListener("click", () => { edSnap(); ED.maps = { front: new Map(ED.orig.front), back: new Map(ED.orig.back) }; edDraw(); });
+$("edCancel").addEventListener("click", () => $("editor").close());
+$("edDone").addEventListener("click", () => {
+  if (!ED.maps.front.size) { toast("The figure is empty"); return; }
+  edited = { front: ED.maps.front, back: ED.maps.back, psRel: ED.ps / (TH[state.scale] || 34) };
+  const opt = $("tpl").querySelector('option[value="custom"]'); opt.disabled = false;
+  state.tpl = "custom"; $("editor").close(); syncForm(); rebuild();
+  const n = new Set(["ink", ...edited.front.values(), ...edited.back.values()]).size;
+  toast(state.maxColors !== "all" && n > Number(state.maxColors) ? `Your edit uses ${n} colors; Max colors is ${state.maxColors}, so the least-used ones are merged. Raise Max colors to keep them.` : "Using your edited figure");
+});
+$("editPx").addEventListener("click", edOpen);
+window.addEventListener("keydown", e => { if ($("editor").open && (e.metaKey || e.ctrlKey) && e.key === "z") { e.preventDefault(); $("edUndo").click(); } });
+
+// test hook
+window.__bitforge = { ED, edOpen, get edited() { return edited; }, TEMPLATES, templateSprite, makeSprite, readUpload, setUpload: u => { upload = u; }, readable, relLum, state, buildSprite, buildParts, printObjects, stlBinary, threeMF, objFiles, parseText, voxelSize, colorOf, RACES, CLASSES, OPTS, get current() { return current; } };
+
+Object.assign(state, parseText($("desc").value, state)); state.name = "Bromli";
+applyTemplate(state, state.tpl); syncForm(); resize(); rebuild();
+</script>
