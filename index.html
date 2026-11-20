@@ -570,6 +570,17 @@ function artGrid(id, back) { // Map key -> palette index (-1 = black)
 function rgbHsl([r, g, b]) { r /= 255; g /= 255; b /= 255; const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2; if (mx === mn) return [0, 0, l]; const d = mx - mn, s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn); let h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; return [h * 60, s, l]; }
 function hslHex([h, s, l]) { h = ((h % 360) + 360) % 360 / 360; s = Math.max(0, Math.min(1, s)); l = Math.max(0, Math.min(1, l)); const f = n => { const k = (n + h * 12) % 12, a = s * Math.min(l, 1 - l); return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)); }; return "#" + [f(0), f(8), f(4)].map(v => Math.round(v * 255).toString(16).padStart(2, "0")).join(""); }
 const MATS = { metal: "Metal", light: "Bone/white", skin: "Skin", red: "Reds", brown: "Browns", gold: "Gold", green: "Greens", blue: "Blues", purple: "Purples" };
+// material of palette entry i of figure id: like matOf, but green or grey skin (orc, zombie) seen on the face counts as skin
+const artMatCache = {};
+function artMat(id, i) {
+  if (!artMatCache[id]) { const A = ART[id], m = A.pal.map(h => matOf(h));
+    if (id === "a_cultist") m.forEach((x, j) => { if (x === "green") m[j] = "skin"; });
+    if (A.race === "orc" || id === "a_zombie") { const [x0, x1, y0, y1] = ART_HEAD[id], face = new Set();
+      for (const [k, j] of artGrid(id, false)) { const x = Math.floor(k / 2000) - 500, y = (k % 2000) - 500; if (j >= 0 && x >= x0 && x <= x1 && y >= y0 && y <= y1) face.add(j); }
+      for (const j of face) if (m[j] === "green") m[j] = "skin"; }
+    artMatCache[id] = m; }
+  return artMatCache[id][i];
+}
 function matOf(hex) {
   const [h, s, l] = rgbHsl(hexRgb("#" + hex));
   if (s < 0.16 || (s < 0.3 && l < 0.3)) return l > 0.82 ? "light" : "metal";
@@ -582,7 +593,24 @@ function matOf(hex) {
   return "purple";
 }
 let matInfo = { key: "", list: [] }; // materials in the current figure, for the color pickers
-function artParts(s) { return s.tpl === "mix" ? { body: s.mixBody, head: s.mixHead !== s.mixBody ? s.mixHead : null } : { body: s.tpl, head: null }; }
+// head swaps that were checked by eye and look hand-drawn (same body size, matching neck and outfit)
+const MIX_OK = {
+  a_fighter: ["a_ranger", "a_barbarian", "a_bard", "a_knight", "a_skeleton", "a_zombie", "a_lich"],
+  a_ranger: ["a_fighter", "a_barbarian", "a_bard", "a_skeleton", "a_zombie"],
+  a_barbarian: ["a_fighter", "a_ranger", "a_bard", "a_knight", "a_zombie"],
+  a_bard: ["a_fighter", "a_ranger", "a_barbarian", "a_knight"],
+  a_knight: ["a_fighter", "a_ranger", "a_barbarian", "a_bard", "a_skeleton", "a_zombie", "a_lich"],
+  a_skeleton: ["a_fighter", "a_knight", "a_cultist", "a_lich"],
+  a_zombie: ["a_fighter", "a_barbarian", "a_knight", "a_skeleton", "a_cultist"],
+  a_cultist: ["a_fighter", "a_ranger", "a_barbarian", "a_knight", "a_skeleton", "a_zombie", "a_lich"],
+  a_lich: ["a_fighter", "a_knight", "a_skeleton", "a_zombie", "a_cultist"],
+  a_rogue: ["a_wizard", "a_cleric", "a_berserker"],
+  a_wizard: ["a_rogue", "a_cleric", "a_berserker"],
+  a_cleric: ["a_rogue", "a_wizard", "a_berserker"],
+  a_berserker: ["a_rogue", "a_wizard", "a_cleric"],
+};
+const mixOk = (body, head) => head === body || (MIX_OK[body] || []).includes(head);
+function artParts(s) { return s.tpl === "mix" ? { body: s.mixBody, head: s.mixHead !== s.mixBody && mixOk(s.mixBody, s.mixHead) ? s.mixHead : null } : { body: s.tpl, head: null }; }
 function artSprite(s, back = false) {
   const { body, head } = artParts(s);
   const level = A => s.maxColors === "all" ? A.pal : Number(s.maxColors) <= 5 ? A.r5 : A.r8;
@@ -604,21 +632,30 @@ function artSprite(s, back = false) {
       comps.push(comp); }
     const big = Math.max(...comps.map(c => c.length));
     for (const c of comps) if (c.length < big && c.length < 60) for (const k of c) { cells.delete(k); src.delete(k); }
+    // match the body's skin (hands, arms) to the new head's skin: map each body skin shade to the head shade of the same lightness rank
+    if (s.matchSkin !== false) {
+      const skinIdx = id => ART[id].pal.map((h, i) => [h, i]).filter(([, i]) => artMat(id, i) === "skin").sort((x, y) => rgbHsl(hexRgb("#" + x[0]))[2] - rgbHsl(hexRgb("#" + y[0]))[2]).map(x => x[1]);
+      const used = id => { const u = new Set(); for (const [k, i] of cells) if (src.get(k) === id && i >= 0) u.add(i); return u; };
+      const uh = used(head), ub = used(body);
+      const hs = skinIdx(head).filter(i => uh.has(i)), bs = skinIdx(body).filter(i => ub.has(i));
+      if (hs.length && bs.length) { const map = new Map(bs.map((i, r) => [i, hs[Math.round(r * (hs.length - 1) / Math.max(1, bs.length - 1))]]));
+        for (const [k, i] of [...cells]) if (src.get(k) === body && map.has(i)) { cells.set(k, map.get(i)); src.set(k, head); } }
+    }
   }
   // materials (from the full palette) and their main shade, for recoloring and the pickers
   const cnt = new Map();
-  for (const [k, i] of cells) if (i >= 0) { const hx = ART[src.get(k)].pal[i], m = matOf(hx); const e = cnt.get(m) || new Map(); e.set(hx, (e.get(hx) || 0) + 1); cnt.set(m, e); }
+  for (const [k, i] of cells) if (i >= 0) { const hx = ART[src.get(k)].pal[i], m = artMat(src.get(k), i); const e = cnt.get(m) || new Map(); e.set(hx, (e.get(hx) || 0) + 1); cnt.set(m, e); }
   const mids = {}; for (const [m, e] of cnt) mids[m] = [...e.entries()].sort((a, b) => b[1] - a[1])[0][0];
   if (!back) { const key = body + "|" + head; const list = Object.keys(MATS).filter(m => cnt.has(m)).map(m => ({ m, label: MATS[m], mid: "#" + mids[m] })); matInfo = { key: key + list.map(x => x.m).join(), list }; }
   const rec = s.recolor || {}, out = new Map(), memo = {};
-  const recolor = (full, shown) => {
-    const m = matOf(full), t = rec[m]; if (!t || !mids[m]) return shown;
+  const recolor = (m, shown) => {
+    const t = rec[m]; if (!t || !mids[m]) return shown;
     const mk = m + shown; if (memo[mk]) return memo[mk];
     const T = rgbHsl(hexRgb(t)), Mi = rgbHsl(hexRgb("#" + mids[m])), C = rgbHsl(hexRgb("#" + shown));
     const sat = Mi[1] < 0.1 ? T[1] * (0.7 + C[1]) : C[1] * T[1] / Mi[1];
     return memo[mk] = hslHex([C[0] + (T[0] - Mi[0]), sat, C[2] + (T[2] - Mi[2])]).slice(1);
   };
-  for (const [k, i] of cells) { if (i < 0) { out.set(k, "ink"); continue; } const A = ART[src.get(k)]; out.set(k, "c_" + recolor(A.pal[i], level(A)[i])); }
+  for (const [k, i] of cells) { if (i < 0) { out.set(k, "ink"); continue; } const A = ART[src.get(k)]; out.set(k, "c_" + recolor(artMat(src.get(k), i), level(A)[i])); }
   return finishSprite(out, (TH[s.scale] || 34) / ART_REF, false);
 }
 const spriteKey = (x, y) => (x + 500) * 2000 + (y + 500);
@@ -1818,8 +1855,13 @@ function parseText(text, cur) {
   if (!ART[body]) body = "a_fighter";
   if (race && !monster && !cls && ART[body].monster) body = race === "human" ? "a_fighter" : RACE_HEAD[race] || "a_fighter"; // "an elf" while a monster is shown
   let head = monster || cls ? null : startHead;
-  if (race && !ART[body].monster && RACE_HEAD[race] && ART[body].race !== race) head = RACE_HEAD[race];
+  let raceSkin = null;
+  if (race && !ART[body].monster && ART[body].race !== race) {
+    const h = (RACE_HEADS[race] || []).find(h => mixOk(body, h));
+    if (h) head = h; else { head = null; raceSkin = RACE_SKIN[race] || null; } // no head that fits: tint the skin instead
+  }
   if (race && ART[body].race === race) head = null;
+  if (head && !mixOk(body, head)) head = null;
   if (head && head !== body) { s.tpl = "mix"; s.mixBody = body; s.mixHead = head; } else s.tpl = body;
   s.race = ART[head || body].race || s.race;
   // colors: armor/metal words recolor metal, cloth words recolor the body's main (and second) cloth color
@@ -1831,11 +1873,14 @@ function parseText(text, cur) {
     }
     s.recolor = rec;
   } else if (monster || cls || race) s.recolor = {};
+  if (raceSkin) s.recolor = { ...s.recolor, skin: raceSkin };
   return s;
 }
 const RACE_HEAD = { human: "a_bard", elf: "a_ranger", dwarf: "a_cleric", orc: "a_barbarian", halfling: "a_rogue", gnome: "a_wizard" };
+const RACE_HEADS = { human: ["a_bard"], elf: ["a_ranger"], orc: ["a_barbarian"], dwarf: ["a_cleric", "a_berserker"], halfling: ["a_rogue"], gnome: ["a_wizard"] };
+const RACE_SKIN = { orc: "#6f9a45", tiefling: "#c0444a", dragonborn: "#3f8a7a", elf: "#ecc7a8", human: "#e2a98a" };
 function clothMats(id) { // cloth materials of a figure, most used first
-  const c = {}; for (const [, i] of artGrid(id, false)) if (i >= 0) { const m = matOf(ART[id].pal[i]); if (["red", "blue", "green", "purple", "brown"].includes(m)) c[m] = (c[m] || 0) + 1; }
+  const c = {}; for (const [, i] of artGrid(id, false)) if (i >= 0) { const m = artMat(id, i); if (["red", "blue", "green", "purple", "brown"].includes(m)) c[m] = (c[m] || 0) + 1; }
   const l = Object.keys(c).sort((a, b) => c[b] - c[a]); const nb = l.filter(m => m !== "brown"); return nb.length ? nb.concat(l.filter(m => m === "brown")) : l;
 }
 function applyClass(s, cls) {
@@ -1886,8 +1931,14 @@ function renderMats() {
 let matRaf = 0;
 $("matColors").addEventListener("input", e => { const m = e.target.dataset.mat; if (!m) return; e.stopPropagation(); state.recolor = { ...(state.recolor || {}), [m]: e.target.value }; cancelAnimationFrame(matRaf); matRaf = requestAnimationFrame(rebuild); });
 $("matReset").addEventListener("click", () => { state.recolor = {}; matShown = ""; rebuild(); });
+function fillMixHeads() {
+  if (!MIX_OK[state.mixBody]) state.mixBody = "a_knight";
+  const ok = [state.mixBody, ...MIX_OK[state.mixBody]];
+  if (!ok.includes(state.mixHead)) state.mixHead = ok[1];
+  $("mixHead").innerHTML = ok.map(k => `<option value="${k}">${k === state.mixBody ? "Own head" : ART_HEAD[k][5] + " (" + ART[k].label + ")"}</option>`).join("");
+}
 function syncForm() {
-  $("name").value = state.name;
+  $("name").value = state.name; fillMixHeads();
   for (const k of ["tpl", "race", "cls", "outfit", "head", "weapon", "offhand", "hair", "beard", "scale", "baseShape", "baseSize", "baseH", "fit", "facing", "outline", "maxColors", "mixBody", "mixHead"]) $(k).value = state[k];
   updateMode();
   $("cape").checked = state.cape; $("shading").checked = state.shading; $("backColor").checked = state.backColor;
@@ -1903,7 +1954,7 @@ function readForm() {
 document.querySelector(".rail").addEventListener("input", e => {
   const id = e.target.id;
   if (id === "desc" || id === "upFile") return;
-  if (id === "tpl") { readForm(); state.tpl = e.target.value; if (TEMPLATES[state.tpl]) applyTemplate(state, state.tpl); if (state.tpl === "upload" && !upload) toast("Choose a PNG of your pixel art"); syncForm(); }
+  if (id === "tpl") { const prev = state.tpl; readForm(); state.tpl = e.target.value; if (state.tpl === "mix" && ART[prev]) { state.mixBody = prev; state.mixHead = MIX_OK[prev][0]; } if (TEMPLATES[state.tpl]) applyTemplate(state, state.tpl); if (state.tpl === "upload" && !upload) toast("Choose a PNG of your pixel art"); syncForm(); }
   else if (id === "race") { readForm(); applyRace(state, e.target.value); syncForm(); }
   else if (id === "cls") { readForm(); applyClass(state, e.target.value); syncForm(); }
   else readForm();
@@ -1932,10 +1983,12 @@ const pick = o => { const k = Object.keys(o); return k[Math.floor(Math.random() 
 $("random").addEventListener("click", () => {
   if (state.tpl !== "builder") {
     const tp = pick(ART); state.recolor = {}; state.name = NAMES[Math.floor(Math.random() * NAMES.length)];
-    let hd = null; if (!ART[tp].monster && Math.random() < 0.4) { hd = pick(RACE_HEAD); if (ART[tp].race === hd) hd = null; }
-    if (hd) { state.tpl = "mix"; state.mixBody = tp; state.mixHead = RACE_HEAD[hd]; state.race = hd; } else { state.tpl = tp; if (ART[tp].race) state.race = ART[tp].race; }
+    const hd = Math.random() < 0.4 ? MIX_OK[tp][Math.floor(Math.random() * MIX_OK[tp].length)] : null;
+    if (hd) { state.tpl = "mix"; state.mixBody = tp; state.mixHead = hd; } else state.tpl = tp;
+    state.race = ART[hd || tp].race || state.race;
     syncForm(); rebuild();
-    $("desc").value = hd ? `A ${hd} ${ART[tp].label.toLowerCase().split(" ").slice(-1)[0]} named ${state.name}` : `A ${ART[tp].label.toLowerCase()} named ${state.name}`;
+    const nm = ART[tp].label.toLowerCase(), an = /^[aeiou]/.test(nm) ? "An" : "A";
+    $("desc").value = hd ? `${an} ${nm} with the ${ART_HEAD[hd][5].toLowerCase()} head, named ${state.name}` : `${an} ${nm} named ${state.name}`;
     return;
   }
   applyClass(state, pick(CLASSES)); applyRace(state, pick(RACES));
@@ -2213,7 +2266,7 @@ $("editPx").addEventListener("click", edOpen);
 window.addEventListener("keydown", e => { if ($("editor").open && (e.metaKey || e.ctrlKey) && e.key === "z") { e.preventDefault(); $("edUndo").click(); } });
 
 // test hook
-window.__bitforge = { ED, edOpen, get edited() { return edited; }, TEMPLATES, ART, templateSprite, makeSprite, readUpload, setUpload: u => { upload = u; }, readable, relLum, state, buildSprite, buildParts, printObjects, stlBinary, threeMF, objFiles, parseText, voxelSize, colorOf, RACES, CLASSES, OPTS, get current() { return current; } };
+window.__bitforge = { ED, edOpen, get edited() { return edited; }, TEMPLATES, ART, get matInfo() { return matInfo; }, templateSprite, makeSprite, readUpload, setUpload: u => { upload = u; }, readable, relLum, state, buildSprite, buildParts, printObjects, stlBinary, threeMF, objFiles, parseText, voxelSize, colorOf, RACES, CLASSES, OPTS, get current() { return current; } };
 
 Object.assign(state, parseText($("desc").value, state)); state.name = "Bromli";
 applyTemplate(state, state.tpl); syncForm(); resize(); rebuild();
