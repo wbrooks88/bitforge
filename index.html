@@ -1365,7 +1365,7 @@ function uploadSprite(s, back = false) {
   // If the art already has a dark outline, don't add a second one.
   let outlined = true;
   for (const [k, m] of cells) { const x = Math.floor(k / 2000) - 500, y = (k % 2000) - 500; if (m !== "ink" && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => !cells.has(spriteKey(x + a, y + b)))) { outlined = false; break; } }
-  if (back) { const main = [...count.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || "ink"; for (const k of cells.keys()) cells.set(k, main); }
+  // back: the same picture, so seen from behind it is the front's mirror image and lines up with it pixel for pixel
   const ps = Math.max(0.45, Math.min(1.4, (TH[s.scale] || 34) / (U.h + (outlined ? 1 : 3))));
   return finishSprite(cells, ps, !outlined);
 }
