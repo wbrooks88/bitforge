@@ -167,6 +167,7 @@ dialog.editor::backdrop { background: rgba(10, 12, 18, 0.55); }
         <label class="f">Base size<select id="baseSize"><option value="25">25mm (1")</option><option value="32">32mm</option><option value="40">40mm</option><option value="50">50mm (2")</option></select></label>
         <label class="f">Base height<select id="baseH"><option value="4">4mm</option><option value="5">5mm</option><option value="6">6mm</option></select></label>
         <label class="f">Max colors<select id="maxColors"><option value="all">No limit</option><option value="8">8 (incl. black)</option><option value="5">5 (incl. black, tuned)</option><option value="4">4 (one AMS)</option><option value="3">3</option><option value="2">2</option></select></label>
+        <label class="f">Facing<select id="facing"><option value="turned">Three-quarter (turned)</option><option value="front">Straight on</option></select></label>
         <label class="f">Outline<select id="outline"><option value="thick">Bold (2 pixels)</option><option value="thin">Thin (1 pixel)</option></select></label>
         <label class="f">Click fit<select id="fit"><option value="tight">Tight (0.10mm)</option><option value="normal">Normal (0.15mm)</option><option value="loose">Loose (0.25mm)</option></select></label>
       </div>
@@ -246,7 +247,7 @@ const state = {
   name: "Bromli", race: "dwarf", cls: "cleric", outfit: "robe", head: "none", weapon: "hammer", offhand: "shield",
   hair: "short", beard: "long", cape: true,
   colors: { skin: "#d9a07a", hair: "#8a4a22", primary: "#e8e2d0", secondary: "#a8262b", metal: "#a9b0bb", leather: "#6b4428", gem: "#59d0ff", trim: "#e2b440", bone: "#ece3c8", base: "#4a4f5a" },
-  tpl: "cleric", scale: "28", baseShape: "round", baseSize: "25", baseH: "4", fit: "normal", outline: "thick", maxColors: "5", shading: false, backColor: true,
+  tpl: "cleric", scale: "28", baseShape: "round", baseSize: "25", baseH: "4", fit: "normal", facing: "turned", outline: "thick", maxColors: "5", shading: false, backColor: true,
 };
 
 /* ---------------- Voxel grid ---------------- */
@@ -582,6 +583,7 @@ function poseCanvas(back = false) {
   // behind/front layers and the order of objects inside them, so held items sit behind the body
   // and capes cover it.
   const cells = new Map(); let pid = 0, gid = 0, layer = "body", cur = { id: 0, ink: true, pr: 0 }, slot = "primary";
+  // ox shifts what is drawn (used to nudge a turned head toward the side it faces)
   const RANK = back ? { front: 0, body: 1, behind: 2 } : { behind: 0, body: 1, front: 2 };
   const K = (x, y) => x * 4096 + y;
   const C = {
@@ -590,7 +592,8 @@ function poseCanvas(back = false) {
     layer(l) { const prev = layer; layer = l; gid++; return prev; },
     group() { gid++; return C; },
     col(s) { slot = s; return C; },
-    px(x, y, s = slot) { x = Math.round(x); y = Math.round(y); if (y < 0) return C; if (s === null) { cells.delete(K(x, y)); return C; } const e = cells.get(K(x, y)); if (e && e.p.pr > cur.pr) return C; cells.set(K(x, y), { x, y, s, p: cur }); return C; },
+    ox: 0, turn: false,
+    px(x, y, s = slot) { x = Math.round(x + C.ox); y = Math.round(y); if (y < 0) return C; if (s === null) { cells.delete(K(x, y)); return C; } const e = cells.get(K(x, y)); if (e && e.p.pr > cur.pr) return C; cells.set(K(x, y), { x, y, s, p: cur }); return C; },
     get(x, y) { return cells.get(K(x, y)); },
     rect(x0, x1, y0, y1, s) { if (x0 > x1) [x0, x1] = [x1, x0]; if (y0 > y1) [y0, y1] = [y1, y0]; for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) C.px(x, y, s); return C; },
     ell(cx, cy, rx, ry, s) { for (let x = Math.floor(cx - rx - 1); x <= cx + rx + 1; x++) for (let y = Math.floor(cy - ry - 1); y <= cy + ry + 1; y++) if (((x + 0.5 - cx) / rx) ** 2 + ((y + 0.5 - cy) / ry) ** 2 <= 1) C.px(x, y, s); return C; },
@@ -630,11 +633,12 @@ function poseFinish(C) {
   for (const q of out.values()) cells.set(spriteKey(q.x, q.y + 1), q.m);
   return cells;
 }
-function anchors(race) {
+function anchors(race, turn = false) {
   const R = POSE_RACE[race] || POSE_RACE.human;
   const A = { ...R, race };
   A.knee = Math.round(R.hip * 0.5); A.waist = R.hip + 3; A.sh = R.hip + R.torso; A.chin = A.sh + 1;
   A.top = A.chin + R.hh; A.eye = A.chin + Math.round(R.hh * 0.42);
+  A.turn = !!turn; A.f = turn ? 3 : 0; // three-quarter view: the face is turned toward +x by f pixels
   return A;
 }
 /* ----- body pieces ----- */
@@ -644,49 +648,55 @@ function drawLegs(C, A, o = {}) {
     const fx = sd * (A.lw / 2 + spread) , hx = sd * (A.hp - A.lw / 2);
     C.part(pants).poly([[hx - A.lw / 2, A.hip + 1], [hx + A.lw / 2, A.hip + 1], [fx + A.lw / 2, bootH], [fx - A.lw / 2, bootH]]);
     const bx0 = Math.round(fx - A.lw / 2), bx1 = Math.round(fx + A.lw / 2) - 1;
-    C.part(boots).rect(bx0, bx1, 0, bootH).rect(sd < 0 ? bx0 - 1 : bx0, sd < 0 ? bx1 : bx1 + 1, 0, 1);
+    C.part(boots).rect(bx0, bx1, 0, bootH).rect(sd < 0 && !A.turn ? bx0 - 1 : bx0, sd < 0 && !A.turn ? bx1 : bx1 + (A.turn ? 2 : 1), 0, 1);
     if (o.cuff) C.col(o.cuff).rect(bx0, bx1, bootH, bootH);
   }
 }
 function drawHead(C, A, o = {}) {
   const hw = A.hw, b = A.chin, t = A.top, back = o.back;
   const skin = o.skin || "skin";
-  if (A.ears && !o.noEars) for (const sd of [-1, 1]) {
+  if (A.ears && !o.noEars) for (const sd of A.turn ? [-1] : [-1, 1]) {
     C.part(skin);
     const x0 = sd < 0 ? -hw - 1 : hw;
     if (A.ears === "small") C.rect(x0, x0, A.eye - 2, A.eye + 1).px(x0 + sd, A.eye + 1);
     else C.poly(sd < 0 ? [[-hw + 1, A.eye - 3], [-hw - 5, A.eye + 4], [-hw + 1, A.eye + 1]] : [[hw - 1, A.eye - 3], [hw + 5, A.eye + 4], [hw - 1, A.eye + 1]]);
   }
   C.part(skin).rect(-hw, hw - 1, b + 1, t - 1).rect(-hw + 1, hw - 2, b, t);
-  if (A.snout) C.rect(-hw + 1, hw - 2, b - 1, b + 4).rect(-hw - 1, hw, b + 1, b + 3);
+  if (A.snout) C.rect(-hw + 1 + A.f, hw - 2 + A.f, b - 1, b + 4).rect(-hw - 1 + A.f * 1.5, hw + A.f * 1.5, b + 1, b + 3);
+  else if (A.turn && !back) C.rect(hw, hw, A.eye - 3, A.eye - 1).px(hw + 1, A.eye - 2); // nose in profile
   if (back) return;
   // face
   C.part("ink", false);
   const ey = A.eye;
-  for (const x of [-4, 3]) C.rect(x, x, ey, ey + 1, "ink");
-  if (!o.noBrows) { C.rect(-5, -3, ey + 3, ey + 3, o.brow || "hair"); C.rect(2, 4, ey + 3, ey + 3, o.brow || "hair"); }
-  if (A.snout) { C.px(-3, b + 3, "ink"); C.px(2, b + 3, "ink"); C.rect(-2, 1, b + 1, b + 1, "ink"); }
-  else if (!o.noMouth) C.rect(A.tusks ? -2 : -1, A.tusks ? 1 : 0, b + 2, b + 2, "ink");
-  if (A.nose) C.part(skin).rect(-1, 0, ey - 3, ey - 1).rect(-2, 1, ey - 3, ey - 2);
-  if (A.tusks && !o.noMouth) { C.part("bone", false).rect(-3, -3, b + 2, b + 4).rect(2, 2, b + 2, b + 4); }
+  const f = A.f, ex = A.turn ? [-1, 4] : [-4, 3];
+  for (const x of ex) C.rect(x, x, ey, ey + 1, "ink");
+  if (!o.noBrows) { if (A.turn) { C.rect(-2, 0, ey + 3, ey + 3, o.brow || "hair"); C.rect(3, 5, ey + 3, ey + 3, o.brow || "hair"); } else { C.rect(-5, -3, ey + 3, ey + 3, o.brow || "hair"); C.rect(2, 4, ey + 3, ey + 3, o.brow || "hair"); } }
+  if (A.snout) { C.px(-3 + f * 1.5, b + 3, "ink"); C.px(2 + f * 1.5, b + 3, "ink"); C.rect(-2 + f * 1.5, 1 + f * 1.5, b + 1, b + 1, "ink"); }
+  else if (!o.noMouth) C.rect((A.tusks ? -2 : -1) + f, (A.tusks ? 1 : 0) + f, b + 2, b + 2, "ink");
+  if (A.nose) C.part(skin).rect(-1 + f * 1.5, f * 1.5, ey - 3, ey - 1).rect(-2 + f * 1.5, 1 + f * 1.5, ey - 3, ey - 2);
+  if (A.tusks && !o.noMouth) { C.part("bone", false).rect(-3 + f, -3 + f, b + 2, b + 4).rect(2 + f, 2 + f, b + 2, b + 4); }
 }
 function drawHair(C, A, style = "short", back = false) {
   const hw = A.hw, t = A.top, ey = A.eye;
   C.part("hair");
   if (style === "none") return;
   C.rect(-hw, hw - 1, t - 2, t + 1).rect(-hw + 1, hw - 2, t + 2, t + 2);
-  C.rect(-hw - 1, -hw, ey, t - 1).rect(hw - 1, hw, ey, t - 1);
-  if (style === "long") { C.rect(-hw - 1, -hw + 1, A.sh - 4, ey).rect(hw - 2, hw, A.sh - 4, ey); }
+  if (A.turn && !back) C.rect(-hw - 1, -hw + 2, ey - 2, t - 1).rect(hw - 1, hw, ey + 3, t - 1);
+  else C.rect(-hw - 1, -hw, ey, t - 1).rect(hw - 1, hw, ey, t - 1);
+  if (style === "long") { if (A.turn && !back) C.rect(-hw - 1, -hw + 2, A.sh - 4, ey).rect(hw, hw, A.sh - 4, ey + 3); else C.rect(-hw - 1, -hw + 1, A.sh - 4, ey).rect(hw - 2, hw, A.sh - 4, ey); }
   if (style === "wild") { for (let i = 0; i < 6; i++) { const x = -hw - 1 + i * 3; C.rect(x, x + 1, t + 2, t + 3 + (i % 2)); } C.rect(-hw - 2, -hw, A.sh - 2, t - 1).rect(hw - 1, hw + 1, A.sh - 2, t - 1); }
   if (back) C.rect(-hw, hw - 1, A.chin + 2, t);
+  else if (A.turn) C.rect(-hw, 0, t - 3, t - 3).rect(-hw, -hw + 3, t - 4, t - 4); // fringe swept back
   else C.rect(-hw, -hw + 3, t - 3, t - 3).rect(1, 3, t - 3, t - 3); // fringe
 }
 function drawBeard(C, A, long = true) {
   const hw = A.hw, b = A.chin, ey = A.eye;
   C.part("hair");
-  C.rect(-hw, hw - 1, b - 1, ey - 2).rect(-hw + 1, hw - 2, b - (long ? 6 : 3), b).rect(-hw + 3, hw - 4, b - (long ? 9 : 4), b);
-  C.part("skin", false).rect(-2, 1, ey - 2, ey - 1); // nose/cheeks
-  C.part("ink", false).rect(-1, 0, b + 2, b + 2, "ink"); // mouth line in the beard
+  const f = A.f;
+  C.rect(-hw, hw - 1, b - 1, ey - 2).rect(-hw + 1 + f / 2, hw - 2 + f / 2, b - (long ? 6 : 3), b).rect(-hw + 3 + f, hw - 4 + f, b - (long ? 9 : 4), b);
+  C.part("skin", false).rect(-2 + f, 1 + f, ey - 2, ey - 1); // nose/cheeks
+  if (A.turn) C.part("skin").rect(hw, hw, ey - 3, ey - 1).px(hw + 1, ey - 2);
+  C.part("ink", false).rect(-1 + f, f, b + 2, b + 2, "ink"); // mouth line in the beard
 }
 function drawHorns(C, A, y0) {
   for (const sd of [-1, 1]) {
@@ -767,6 +777,7 @@ function drawBelt(C, A, y, o = {}) {
   for (const px of o.pouches || []) { C.part(o.pouchSlot || "leather").rect(px - 1, px + 2, y - 5, y - 2); C.part(o.buckle || "trim", false).rect(px, px + 1, y - 3, y - 3); }
 }
 function drawPauldron(C, x, y, rx, ry, slot = "metal", rim = "trim") {
+  if (C.turn) { const k = x < 0 ? 1.15 : 0.8; rx *= k; ry *= k; if (x > 0) x -= 0.5; } // near shoulder bigger in three-quarter view
   C.part(slot).ell(x, y, rx, ry);
   if (rim) { const yy = Math.round(y - ry * 0.55), h = rx * 0.8; C.part(rim, false).rect(Math.round(x - h + 0.5), Math.round(x + h - 1.5), yy, yy); }
 }
@@ -791,12 +802,13 @@ const POSES = {
     drawSword(C, A.sw + 6, S - 3, Math.PI * 0.32, 24, back);
     drawArm(C, -A.sw + 1, S - 3, -A.sw - 3, S - 9, -A.sw - 1, S - 13, "metal", { hand: "leather" });
     drawKiteShield(C, -A.sw - 2.5, S - 12, 6, 15, back);
+    C.ox = A.f / 2;
     drawHead(C, A, { back, noEars: true, noBrows: true });
     if (A.beard && !back) drawBeard(C, A, true);
     const hw = A.hw, t = A.top;
-    C.part("metal").rect(-hw - 1, hw, A.eye + 4, t + 1).rect(-hw, hw - 1, t + 2, t + 2).rect(-hw - 1, -hw, A.chin + 1, A.eye + 3).rect(hw - 1, hw, A.chin + 1, A.eye + 3);
+    C.part("metal").rect(-hw - 1, hw, A.eye + 4, t + 1).rect(-hw, hw - 1, t + 2, t + 2).rect(-hw - 1, -hw + A.f, A.chin + 1, A.eye + 3).rect(hw - 1 + A.f, hw, A.chin + 1, A.eye + 3);
     if (back) C.rect(-hw - 1, hw, A.chin + 1, t);
-    else C.part("metal").rect(-1, 0, A.eye - 2, A.eye + 4);
+    else C.part("metal").rect(-1 + A.f, A.f, A.eye - 2, A.eye + 4);
     C.part("secondary").poly([[-3, t + 2], [2, t + 2], [hw + 2, t + 2], [hw + 5, t - 2], [hw + 3, t + 5], [1, t + 8], [-3, t + 6]]); // plume
     if (A.horns || A.snout) drawHorns(C, A, A.top - 2);
   },
@@ -813,9 +825,10 @@ const POSES = {
     drawDagger(C, -A.sw - 6, W - 2, Math.PI * 1.25, 11);
     drawArm(C, A.sw - 2, S - 2, A.sw + 3, S - 9, A.sw + 5, W - 2, "primary", { forearm: "leather" });
     drawDagger(C, A.sw + 5, W - 2, -Math.PI * 0.25, 11);
+    C.ox = A.f / 2;
     drawHead(C, A, { back, noMouth: true });
     const hw = A.hw, t = A.top;
-    C.part("secondary").rect(-hw - 2, hw + 1, A.eye + 4, t + 1).rect(-hw - 1, hw, t + 2, t + 2).rect(-hw + 2, hw - 2, t + 3, t + 3).rect(-hw - 2, -hw, A.chin - 1, A.eye + 3).rect(hw - 1, hw + 1, A.chin - 1, A.eye + 3).rect(-hw - 3, hw + 2, S - 2, A.chin);
+    C.part("secondary").rect(-hw - 2, hw + 1, A.eye + 4, t + 1).rect(-hw - 1, hw, t + 2, t + 2).rect(-hw + 2, hw - 2, t + 3, t + 3).rect(-hw - 2, -hw + A.f, A.chin - 1, A.eye + 3).rect(hw - 1 + A.f, hw + 1, A.chin - 1, A.eye + 3).rect(-hw - 3, hw + 2, S - 2, A.chin);
     C.part("secondary").poly([[hw - 4, t + 3], [hw, t + 3], [hw + 4, t], [hw + 6, t - 5], [hw + 3, t - 3], [hw - 1, t]]); // hood tip
     if (back) C.part("secondary").rect(-hw - 2, hw + 1, A.chin, t + 1);
     else C.part("primary").rect(-hw + 1, hw - 2, A.chin, A.eye - 3);
@@ -835,8 +848,9 @@ const POSES = {
     drawArm(C, A.sw - 2, S - 2, A.sw + 2, S - 8, A.sw + 4.5, S - 6, "primary", { w: 6, cuff: "trim" });
     drawArm(C, -A.sw + 1, S - 2, -A.sw - 4, S - 5, -A.sw - 5, S + 3, "primary", { w: 6, cuff: "trim" });
     C.part("gem").ell(-A.sw - 5.5, S + 8, 2.2, 2.2); C.part("gem", false).px(-A.sw - 9, S + 11).px(-A.sw - 2, S + 12).px(-A.sw - 8, S + 5);
+    C.ox = A.f / 2;
     drawHead(C, A, { back, noMouth: true });
-    if (!back) { C.part("hair").rect(-A.hw, A.hw - 1, A.chin - 9, A.eye - 3).rect(-A.hw + 2, A.hw - 3, A.chin - 13, A.chin - 9).rect(-2, 1, A.chin - 17, A.chin - 13); C.part("hair").rect(-4, 3, A.eye - 3, A.eye - 2); C.part("skin", false).rect(-2, 1, A.eye - 2, A.eye - 1); C.part("ink", false).rect(-1, 0, A.eye - 4, A.eye - 4, "ink"); }
+    if (!back) { const f = A.f; C.part("hair").rect(-A.hw, A.hw - 1, A.chin - 9, A.eye - 3).rect(-A.hw + 2 + f, A.hw - 3 + f / 2, A.chin - 13, A.chin - 9).rect(-2 + f, 1 + f, A.chin - 17, A.chin - 13); C.part("hair").rect(-4 + f, 3 + f, A.eye - 3, A.eye - 2); C.part("skin", false).rect(-2 + f, 1 + f, A.eye - 2, A.eye - 1); if (A.turn) C.part("skin").rect(A.hw, A.hw, A.eye - 3, A.eye - 1).px(A.hw + 1, A.eye - 2); C.part("ink", false).rect(-1 + f, f, A.eye - 4, A.eye - 4, "ink"); }
     else C.part("hair").rect(-A.hw, A.hw - 1, A.chin - 4, A.top - 2);
     const t = A.top, hw = A.hw;
     C.part("primary").rect(-hw - 8, hw + 7, t - 1, t).rect(-hw - 6, hw + 5, t + 1, t + 1);
@@ -860,10 +874,11 @@ const POSES = {
     drawArm(C, -A.sw + 1, S - 3, -A.sw - 2, S - 9, -A.sw, S - 13, "metal");
     drawRoundShield(C, -A.sw - 1.5, S - 12, 8.5, back, "primary");
     if (!back) { const pl = C.layer("front"); const cx = -A.sw - 1.5, cy = S - 12; C.part("trim", false).tint(cx - 9, cx + 9, cy - 9, cy + 9, ["trim"], "metal").ell(cx, cy, 2.8, 2.8).rect(Math.round(cx) - 1, Math.round(cx), Math.round(cy) - 6, Math.round(cy) + 5).rect(Math.round(cx) - 6, Math.round(cx) + 5, Math.round(cy) - 1, Math.round(cy)); C.layer(pl); }
+    C.ox = A.f / 2;
     drawHead(C, A, { back, noEars: A.race !== "elf", brow: "ink" });
     if (A.beard && !back) drawBeard(C, A, true);
     const hw = A.hw, t = A.top; // chainmail coif
-    C.part("metal").rect(-hw - 1, hw, A.eye + 4, t + 1).rect(-hw, hw - 1, t + 2, t + 2).rect(-hw - 2, -hw, A.chin - 1, A.eye + 3).rect(hw - 1, hw + 1, A.chin - 1, A.eye + 3).rect(-hw - 2, hw + 1, S - 2, A.chin - 1);
+    C.part("metal").rect(-hw - 1, hw, A.eye + 4, t + 1).rect(-hw, hw - 1, t + 2, t + 2).rect(-hw - 2, -hw + A.f, A.chin - 1, A.eye + 3).rect(hw - 1 + A.f, hw + 1, A.chin - 1, A.eye + 3).rect(-hw - 2, hw + 1, S - 2, A.chin - 1);
     if (back) C.part("metal").rect(-hw - 1, hw, A.chin, t + 1);
     else C.part("trim", false).rect(-hw - 1, hw, A.eye + 4, A.eye + 4);
     if (A.horns) drawHorns(C, A, A.top);
@@ -895,13 +910,15 @@ const POSES = {
       C.part("secondary", false).rect(hx - 4, hx - 3, by - 1, by + 1);
       C.layer(prev);
     };
+    C.ox = A.f / 2;
     drawHead(C, A, { back });
     if (A.beard && !back) drawBeard(C, A, false);
     const hw = A.hw, t = A.top;
-    C.part("secondary").rect(-hw - 1, hw, A.eye + 3, t + 1).rect(-hw, hw - 1, t + 2, t + 3).rect(-hw + 2, hw - 1, t + 4, t + 4).rect(hw - 2, hw + 2, t + 2, t + 3).rect(hw + 1, hw + 4, t - 1, t + 2).rect(-hw - 2, -hw, A.chin - 1, A.eye + 2).rect(hw - 1, hw + 1, A.chin - 1, A.eye + 2);
+    C.part("secondary").rect(-hw - 1, hw, A.eye + 3, t + 1).rect(-hw, hw - 1, t + 2, t + 3).rect(-hw + 2, hw - 1, t + 4, t + 4).rect(hw - 2, hw + 2, t + 2, t + 3).rect(hw + 1, hw + 4, t - 1, t + 2).rect(-hw - 2, -hw + A.f, A.chin - 1, A.eye + 2).rect(hw - 1 + A.f, hw + 1, A.chin - 1, A.eye + 2);
     if (back) C.rect(-hw - 1, hw, A.chin, t + 1);
     else C.part("hair", false).rect(-hw + 1, hw - 2, A.eye + 3, A.eye + 3);
     if (A.horns || A.snout) drawHorns(C, A, A.top + 1);
+    C.ox = 0;
     bow();
   },
   barbarian(C, A, back) {
@@ -923,12 +940,14 @@ const POSES = {
       C.part("skin").ell(-3, W - 2, 2.4, 2.4).ell(A.sw + 2.5, S + 1, 2.4, 2.4);
       C.layer(prev);
     };
+    C.ox = A.f / 2;
     drawHead(C, A, { back });
     if (A.beard && !back) drawBeard(C, A, true);
     const hw = A.hw, t = A.top;
     if (A.race !== "dragonborn") { drawHair(C, A, "wild", back); C.part("secondary").rect(-hw - 1, hw, t - 2, t - 1); if (!back) C.part("secondary").rect(hw, hw + 2, t - 6, t - 2).rect(hw + 1, hw + 3, t - 8, t - 6); } // headband with knot
     if (A.horns) drawHorns(C, A, A.top + 1);
     if (A.snout) drawSnoutCrest(C, A);
+    C.ox = 0;
     axe();
   },
   bard(C, A, back) {
@@ -953,6 +972,7 @@ const POSES = {
       drawArm(C, -A.sw + 1, S - 3, -A.sw - 3, W, bx - 5, by - 1, "primary"); // strumming hand at the strings
       C.layer(prev);
     };
+    C.ox = A.f / 2;
     drawHead(C, A, { back });
     if (A.beard && !back) drawBeard(C, A, false);
     if (A.race !== "dragonborn") drawHair(C, A, "long", back);
@@ -962,6 +982,7 @@ const POSES = {
     C.part("leather", false).rect(-hw - 1, hw, t + 1, t + 1);
     C.part("bone").line(-hw + 1, t + 2, -hw - 6, t + 11, 2.2).line(-hw - 6, t + 11, -hw - 7, t + 14, 1.6);
     if (A.horns) drawHorns(C, A, A.top + 2);
+    C.ox = 0;
     lute();
   },
   berserker(C, A, back) {
@@ -991,6 +1012,7 @@ const POSES = {
       C.part("skin").ell(X - 0.5, W + 3, 2.4, 2.4);
       C.layer(prev);
     };
+    C.ox = A.f / 2;
     drawHead(C, A, { back, noBrows: true });
     if (A.beard && !back) drawBeard(C, A, true);
     else if (!back) C.part("hair").rect(-A.hw + 1, A.hw - 2, A.chin, A.chin + 1).rect(-A.hw + 2, A.hw - 3, A.chin - 2, A.chin); // short beard
@@ -998,14 +1020,15 @@ const POSES = {
     if (back && A.race !== "dragonborn") C.part("hair").rect(-A.hw, A.hw - 1, A.chin + 1, A.eye + 3);
     // iron helm with nose guard and big curved horns
     const hw = A.hw, t = A.top;
-    C.part("metal").rect(-hw - 1, hw, A.eye + 4, t).rect(-hw, hw - 1, t + 1, t + 2).rect(-hw + 2, hw - 3, t + 3, t + 3).rect(-hw - 1, -hw, A.eye - 1, A.eye + 3).rect(hw - 1, hw, A.eye - 1, A.eye + 3);
+    C.part("metal").rect(-hw - 1, hw, A.eye + 4, t).rect(-hw, hw - 1, t + 1, t + 2).rect(-hw + 2, hw - 3, t + 3, t + 3).rect(-hw - 1, -hw + A.f, A.eye - 1, A.eye + 3).rect(hw - 1 + A.f, hw, A.eye - 1, A.eye + 3);
     if (back) C.part("metal").rect(-hw - 1, hw, A.eye - 1, t);
-    else C.part("metal").rect(-1, 0, A.eye - 3, A.eye + 4);
+    else C.part("metal").rect(-1 + A.f, A.f, A.eye - 3, A.eye + 4);
     C.part("trim", false).rect(-hw - 1, hw, A.eye + 5, A.eye + 5);
     for (const sd of [-1, 1]) {
       C.part("bone"); const x = sd < 0 ? -hw - 1 : hw;
       C.line(x, A.eye + 6, x + sd * 5, A.eye + 9, 3).line(x + sd * 5, A.eye + 9, x + sd * 7, t + 3, 2.6).line(x + sd * 7, t + 3, x + sd * 6, t + 7, 2);
     }
+    C.ox = 0;
     axe();
   },
   knight(C, A, back) {
@@ -1017,7 +1040,7 @@ const POSES = {
     C.part("trim", false).rect(-A.sw + 2, -A.sw + 2, A.hip - 1, S - 1).rect(A.sw - 3, A.sw - 3, A.hip - 1, S - 1).rect(-A.sw + 4, A.sw - 5, A.hip - 9, A.hip - 9);
     if (!back) C.part("trim", false).rect(-1, 0, W + 3, S - 4).rect(-3, 2, S - 7, S - 6);
     C.part("leather").rect(-A.sw + 1, A.sw - 2, W - 1, W); C.part("trim", false).rect(-1, 0, W - 1, W);
-    for (const sd of [-1, 1]) { const x = sd < 0 ? -A.sw + 0.5 : A.sw - 0.5; C.part("metal").ell(x, S - 1, 5, 4.2); C.part("trim", false).rect(Math.round(x) - 4, Math.round(x) + 3, S - 4, S - 4); } // big pauldrons
+    for (const sd of [-1, 1]) { const x = sd < 0 ? -A.sw + 0.5 : A.sw - 0.5, k = A.turn ? (sd < 0 ? 1.15 : 0.8) : 1; C.part("metal").ell(x, S - 1, 5 * k, 4.2 * k); C.part("trim", false).rect(Math.round(x) - 4, Math.round(x) + 3, S - 4, S - 4); } // big pauldrons
     // hammer resting on the right shoulder
     const hx = A.sw + 4, hy = S - 7;
     drawArm(C, A.sw - 1, S - 3, A.sw + 5, S - 9, hx, hy, "metal", { hand: "metal" });
@@ -1041,12 +1064,14 @@ const POSES = {
     }, "front");
     shield(C);
     // great helm
+    C.ox = A.f / 2;
     drawHead(C, A, { back, noEars: true, noBrows: true, noMouth: true });
     const hw = A.hw, t = A.top;
     C.part("metal").rect(-hw - 1, hw, A.chin, t).rect(-hw, hw - 1, A.chin - 1, t + 1).rect(-hw + 2, hw - 3, t + 2, t + 2);
-    if (!back) { C.part("ink", false).rect(-hw + 1, -1, A.eye, A.eye + 1, "ink").rect(1, hw - 2, A.eye, A.eye + 1, "ink"); for (const x of [-4, -2, 1, 3]) C.px(x, A.chin + 3, "ink"); C.part("trim", false).rect(-1, 0, A.chin, t + 1); }
-    for (const sd of [-1, 1]) { C.part("metal"); const x = sd < 0 ? -hw - 2 : hw + 1; C.poly(sd < 0 ? [[x + 1, t - 6], [x - 3, t + 2], [x + 1, t]] : [[x, t - 6], [x + 4, t + 2], [x, t]]); } // fins
+    if (!back) { const f = A.f; C.part("ink", false).rect(-hw + 1 + f * 1.5, -1 + f, A.eye, A.eye + 1, "ink").rect(1 + f, hw - 2 + f / 2, A.eye, A.eye + 1, "ink"); for (const x of A.turn ? [0, 2, 4] : [-4, -2, 1, 3]) C.px(x + f, A.chin + 3, "ink"); C.part("trim", false).rect(-1 + f, f, A.chin, t + 1); }
+    for (const sd of [-1, 1]) { C.part("metal"); const x = sd < 0 ? -hw - 2 : hw + 1, k = A.turn ? (sd < 0 ? 1.4 : 0.7) : 1; C.poly(sd < 0 ? [[x + 1, t - 6], [x + 1 - 4 * k, t + 2 * k], [x + 1, t]] : [[x, t - 6], [x + 4 * k, t + 2 * k], [x, t]]); } // fins
     if (A.horns || A.snout) drawHorns(C, A, A.top + 1);
+    C.ox = 0;
     hammer(C);
   },
   skeleton(C, A, back) {
@@ -1068,10 +1093,11 @@ const POSES = {
     if (!back) { const pl = C.layer("front"); C.part("ink", false).line(-A.sw - 6, S - 8, -A.sw - 3, S - 12, 1, "ink").line(-A.sw - 3, S - 12, -A.sw - 4, S - 15, 1, "ink"); C.layer(pl); } // crack
     drawArm(C, A.sw - 1, S - 1, A.sw + 3, S - 7, A.sw + 5, S - 1, B, { w: 2.4, hand: B });
     drawSword(C, A.sw + 5, S - 1, Math.PI * 0.36, 19, back);
+    C.ox = A.f / 2;
     // skull
     const hw = A.hw, b = A.chin, t = A.top;
     C.part(B).rect(-hw, hw - 1, b + 4, t - 1).rect(-hw + 1, hw - 2, b + 3, t).rect(-hw + 2, hw - 3, b, b + 3);
-    if (!back) { C.part("ink", false).rect(-5, -2, A.eye - 1, A.eye + 1, "ink").rect(1, 4, A.eye - 1, A.eye + 1, "ink").rect(-1, 0, A.eye - 3, A.eye - 2, "ink"); for (let x = -4; x <= 3; x += 2) C.px(x, b + 1, "ink"); C.rect(-4, 3, b + 2, b + 2, "ink"); }
+    if (!back) { const f = A.f; C.part("ink", false).rect(-5 + f * 1.5, -2 + f, A.eye - 1, A.eye + 1, "ink").rect(1 + f, 4 + f / 2, A.eye - 1, A.eye + 1, "ink").rect(-1 + f, f, A.eye - 3, A.eye - 2, "ink"); for (let x = -4 + f; x <= 3 + f / 2; x += 2) C.px(x, b + 1, "ink"); C.rect(-4 + f, 3 + f / 2, b + 2, b + 2, "ink"); }
     C.part("metal").rect(-hw, hw - 1, t - 1, t + 3).rect(-hw + 2, hw - 3, t + 4, t + 4).rect(-hw - 3, hw + 2, t - 2, t - 1); // dented kettle helm
     C.part("ink", false).px(-2, t + 2, "ink").px(3, t, "ink");
   },
@@ -1109,11 +1135,12 @@ const POSES = {
     if (!back) { C.part("trim").rect(-3, 2, A.waist + 6, A.waist + 7); C.part("bone").rect(-2, 1, A.waist + 8, A.waist + 12); C.part("flame").poly([[-2, A.waist + 13], [1, A.waist + 13], [0.5, A.waist + 18], [-1.5, A.waist + 16]]); C.part("trim", false).rect(-1, 0, A.waist + 13, A.waist + 14); }
     else C.part("secondary").rect(-3, 2, A.waist + 6, A.waist + 12).poly([[-2, A.waist + 13], [1, A.waist + 13], [0.5, A.waist + 18], [-1.5, A.waist + 16]]);
     C.layer(pl);
+    C.ox = A.f / 2;
     // deep hood
     const hw = A.hw + 1, t = A.top + 2;
     C.part("secondary").poly([[-hw - 2, A.sh - 2], [hw + 1, A.sh - 2], [hw + 1, t - 6], [1, t + 3], [-2, t + 3], [-hw - 2, t - 6]]);
     for (const sd of [-1, 1]) { C.part("bone"); const x = sd < 0 ? -hw - 1 : hw; C.line(x, t - 5, x + sd * 4, t - 3, 2.6).line(x + sd * 4, t - 3, x + sd * 5, t + 2, 2.2).line(x + sd * 5, t + 2, x + sd * 3, t + 4, 1.6); } // goat horns
-    if (!back) { C.part("ink").rect(-hw + 2, hw - 3, A.chin, A.eye + 3, "ink").rect(-hw + 3, hw - 4, A.eye + 4, A.eye + 5, "ink"); C.part("gem", false).rect(-4, -3, A.eye, A.eye).rect(2, 3, A.eye, A.eye); C.part("trim", false).rect(-hw - 1, hw, A.sh - 2, A.sh - 2); }
+    if (!back) { const f = A.f / 2; C.part("ink").rect(-hw + 2 + f * 2, hw - 3 + f, A.chin, A.eye + 3, "ink").rect(-hw + 3 + f * 2, hw - 4 + f, A.eye + 4, A.eye + 5, "ink"); C.part("gem", false).rect(-4 + f * 3, -3 + f * 3, A.eye, A.eye).rect(2 + f * 2, 3 + f * 2, A.eye, A.eye); C.part("trim", false).rect(-hw - 1, hw, A.sh - 2, A.sh - 2); }
   },
   lich(C, A, back) {
     const S = A.sh;
@@ -1128,23 +1155,25 @@ const POSES = {
     drawArm(C, A.sw - 1, S - 1, A.sw + 3, S - 8, A.sw + 5.5, S - 6, "primary", { hand: "bone", w: 5.4 });
     drawArm(C, -A.sw + 1, S - 1, -A.sw - 5, S - 4, -A.sw - 6, S + 3, "primary", { hand: "bone", w: 5.4 });
     C.part("gem").poly([[-A.sw - 8, S + 6], [-A.sw - 4, S + 6], [-A.sw - 5, S + 12], [-A.sw - 6, S + 9], [-A.sw - 7.5, S + 13]]);
+    C.ox = A.f / 2;
     // skull + crown
     const hw = A.hw, b = A.chin, t = A.top;
     C.part("bone").rect(-hw, hw - 1, b + 4, t - 1).rect(-hw + 1, hw - 2, b + 3, t).rect(-hw + 2, hw - 3, b, b + 3);
-    if (!back) { C.part("ink", false).rect(-5, -2, A.eye - 1, A.eye + 1, "ink").rect(1, 4, A.eye - 1, A.eye + 1, "ink"); C.part("gem", false).px(-4, A.eye).px(2, A.eye); C.part("ink", false).rect(-1, 0, A.eye - 3, A.eye - 2, "ink").rect(-4, 3, b + 1, b + 1, "ink"); }
+    if (!back) { const f = A.f; C.part("ink", false).rect(-5 + f * 1.5, -2 + f, A.eye - 1, A.eye + 1, "ink").rect(1 + f, 4 + f / 2, A.eye - 1, A.eye + 1, "ink"); C.part("gem", false).px(-4 + f * 1.5, A.eye).px(2 + f, A.eye); C.part("ink", false).rect(-1 + f, f, A.eye - 3, A.eye - 2, "ink").rect(-4 + f, 3 + f / 2, b + 1, b + 1, "ink"); }
     C.part("trim").rect(-hw, hw - 1, t - 1, t + 1); for (const x of [-hw, -hw + 3, hw - 4, hw - 1]) C.rect(x, x, t + 2, t + 3); C.rect(-1, 0, t + 2, t + 4);
     if (!back) C.part("gem", false).rect(-1, 0, t, t);
   },
 };
-function poseSprite(name, race, back) {
-  const C = poseCanvas(back), A = anchors(POSES_MONSTER[name] ? "human" : race);
+function poseSprite(name, race, back, turn = false) {
+  const C = poseCanvas(back), A = anchors(POSES_MONSTER[name] ? "human" : race, turn);
+  C.turn = A.turn;
   POSES[name](C, A, back);
   return poseFinish(C);
 }
 const POSES_MONSTER = { skeleton: 1, zombie: 1, cultist: 1, lich: 1 };
 // Pixel size is set so a human hero (head top at row 50) is the chosen scale; other races are naturally shorter or taller.
 function templateSprite(s, back = false) {
-  const cells = poseSprite(s.tpl, s.race, back);
+  const cells = poseSprite(s.tpl, s.race, back, s.facing !== "front");
   // 5-filament palette: each template says which part takes which of its 4 colors (plus black)
   const p5 = TEMPLATES[s.tpl].p5;
   if (p5 && s.maxColors !== "all" && Number(s.maxColors) <= 5) for (const [k, m] of cells) if (p5[m]) cells.set(k, p5[m]);
@@ -1702,7 +1731,7 @@ $("swatches").innerHTML = COLOR_SLOTS.map(([k, l]) => `<label class="sw"><input 
 
 function syncForm() {
   $("name").value = state.name;
-  for (const k of ["tpl", "race", "cls", "outfit", "head", "weapon", "offhand", "hair", "beard", "scale", "baseShape", "baseSize", "baseH", "fit", "outline", "maxColors"]) $(k).value = state[k];
+  for (const k of ["tpl", "race", "cls", "outfit", "head", "weapon", "offhand", "hair", "beard", "scale", "baseShape", "baseSize", "baseH", "fit", "facing", "outline", "maxColors"]) $(k).value = state[k];
   updateMode();
   $("cape").checked = state.cape; $("shading").checked = state.shading; $("backColor").checked = state.backColor;
   for (const [k] of COLOR_SLOTS) $("c_" + k).value = state.colors[k];
@@ -1710,7 +1739,7 @@ function syncForm() {
 }
 function readForm() {
   state.name = $("name").value.trim() || "Hero";
-  for (const k of ["outfit", "head", "weapon", "offhand", "hair", "beard", "scale", "baseShape", "baseSize", "baseH", "fit", "outline", "maxColors"]) state[k] = $(k).value;
+  for (const k of ["outfit", "head", "weapon", "offhand", "hair", "beard", "scale", "baseShape", "baseSize", "baseH", "fit", "facing", "outline", "maxColors"]) state[k] = $(k).value;
   state.cape = $("cape").checked; state.shading = $("shading").checked; state.backColor = $("backColor").checked;
   for (const [k] of COLOR_SLOTS) state.colors[k] = $("c_" + k).value;
 }
