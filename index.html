@@ -122,7 +122,7 @@ dialog.editor::backdrop { background: rgba(10, 12, 18, 0.55); }
         <button class="primary" id="fromText">Build from text</button>
         <button id="random">Random hero</button>
       </div>
-      <p class="hint">Try a class (fighter, rogue, wizard, cleric, ranger, barbarian, bard, berserker, knight) or monster (skeleton, zombie, cultist, lich). Add a race to swap the head (human, elf, dwarf, orc, halfling, gnome) and colors ("gold armor", "green cloak", "purple robe").</p>
+      <p class="hint">Try a class (fighter, rogue, wizard, cleric, ranger, barbarian, bard, berserker, knight) or monster (skeleton, zombie, cultist, lich). Add colors ("gold armor", "green cloak", "purple robe") or a skin tone through race (orc, elf, tiefling).</p>
     </section>
 
     <section>
@@ -593,21 +593,12 @@ function matOf(hex) {
   return "purple";
 }
 let matInfo = { key: "", list: [] }; // materials in the current figure, for the color pickers
-// head swaps that were checked by eye and look hand-drawn (same body size, matching neck and outfit)
+// the only head swaps that look drawn for the body: helmet trades between armored figures of the same build, plus the elf knight
 const MIX_OK = {
-  a_fighter: ["a_ranger", "a_barbarian", "a_bard", "a_knight", "a_skeleton", "a_zombie", "a_lich"],
-  a_ranger: ["a_fighter", "a_barbarian", "a_bard", "a_skeleton", "a_zombie"],
-  a_barbarian: ["a_fighter", "a_ranger", "a_bard", "a_knight", "a_zombie"],
-  a_bard: ["a_fighter", "a_ranger", "a_barbarian", "a_knight"],
-  a_knight: ["a_fighter", "a_ranger", "a_barbarian", "a_bard", "a_skeleton", "a_zombie", "a_lich"],
-  a_skeleton: ["a_fighter", "a_knight", "a_cultist", "a_lich"],
-  a_zombie: ["a_fighter", "a_barbarian", "a_knight", "a_skeleton", "a_cultist"],
-  a_cultist: ["a_fighter", "a_ranger", "a_barbarian", "a_knight", "a_skeleton", "a_zombie", "a_lich"],
-  a_lich: ["a_fighter", "a_knight", "a_skeleton", "a_zombie", "a_cultist"],
-  a_rogue: ["a_wizard", "a_cleric", "a_berserker"],
-  a_wizard: ["a_rogue", "a_cleric", "a_berserker"],
-  a_cleric: ["a_rogue", "a_wizard", "a_berserker"],
-  a_berserker: ["a_rogue", "a_wizard", "a_cleric"],
+  a_knight: ["a_fighter", "a_ranger"],
+  a_fighter: ["a_knight"],
+  a_cleric: ["a_berserker"],
+  a_berserker: ["a_cleric"],
 };
 const mixOk = (body, head) => head === body || (MIX_OK[body] || []).includes(head);
 // livelier colors: more saturation and a lift on mid and dark shades (greys and metal stay nearly neutral)
@@ -615,7 +606,8 @@ const livenMemo = {};
 function liven(hex) {
   if (livenMemo[hex]) return livenMemo[hex];
   const [h, s, l] = rgbHsl(hexRgb("#" + hex));
-  const s2 = s < 0.12 ? s : Math.min(1, s * 1.3 + 0.06), l2 = Math.min(0.94, Math.pow(l, 0.82) + 0.02);
+  const warm = h >= 10 && h <= 55; // skin, leather, wood and gold: only a small lift, never pushed toward orange
+  const s2 = s < 0.12 || warm ? s : Math.min(0.85, s * 1.12 + 0.03), l2 = Math.min(0.92, Math.pow(l, warm ? 0.95 : 0.9));
   return livenMemo[hex] = hslHex([h, s2, l2]).slice(1);
 }
 function artParts(s) { return s.tpl === "mix" ? { body: s.mixBody, head: s.mixHead !== s.mixBody && mixOk(s.mixBody, s.mixHead) ? s.mixHead : null } : { body: s.tpl, head: null }; }
@@ -1912,7 +1904,7 @@ fillSelect($("race"), RACES); fillSelect($("cls"), CLASSES);
   const agrp = (label, keys) => `<optgroup label="${label}">${keys.map(k => `<option value="${k}">${ART[k].label}</option>`).join("")}</optgroup>`;
   const arts = Object.keys(ART);
   $("tpl").innerHTML = agrp("Heroes", arts.filter(k => !ART[k].monster)) + agrp("Monsters", arts.filter(k => ART[k].monster)) +
-    `<optgroup label="Other"><option value="mix">Mix &amp; match (swap heads)</option><option value="upload">Upload your own pixel art</option><option value="custom" disabled>Your edited figure</option></optgroup>`;
+    `<optgroup label="Other"><option value="mix">Helmet &amp; head swap</option><option value="upload">Upload your own pixel art</option><option value="custom" disabled>Your edited figure</option></optgroup>`;
 }
 function updateMode() {
   const T = TEMPLATES[state.tpl];
@@ -1927,7 +1919,7 @@ function updateMode() {
 for (const k of ["outfit", "head", "weapon", "offhand", "hair", "beard"]) fillSelect($(k), OPTS[k]);
 $("swatches").innerHTML = COLOR_SLOTS.map(([k, l]) => `<label class="sw"><input type="color" id="c_${k}" aria-label="${l} color">${l}</label>`).join("");
 
-{ const opts = Object.keys(ART).map(k => `<option value="${k}">${ART[k].label}</option>`).join(""); $("mixBody").innerHTML = opts; $("mixHead").innerHTML = Object.keys(ART).map(k => `<option value="${k}">${ART_HEAD[k][5]} (${ART[k].label})</option>`).join(""); }
+{ const opts = Object.keys(MIX_OK).map(k => `<option value="${k}">${ART[k].label}</option>`).join(""); $("mixBody").innerHTML = opts; $("mixHead").innerHTML = Object.keys(ART).map(k => `<option value="${k}">${ART_HEAD[k][5]} (${ART[k].label})</option>`).join(""); }
 let matShown = "";
 function renderMats() {
   if (matInfo.key !== matShown) {
@@ -1962,7 +1954,7 @@ function readForm() {
 document.querySelector(".rail").addEventListener("input", e => {
   const id = e.target.id;
   if (id === "desc" || id === "upFile") return;
-  if (id === "tpl") { const prev = state.tpl; readForm(); state.tpl = e.target.value; if (state.tpl === "mix" && ART[prev]) { state.mixBody = prev; state.mixHead = MIX_OK[prev][0]; } if (TEMPLATES[state.tpl]) applyTemplate(state, state.tpl); if (state.tpl === "upload" && !upload) toast("Choose a PNG of your pixel art"); syncForm(); }
+  if (id === "tpl") { const prev = state.tpl; readForm(); state.tpl = e.target.value; if (state.tpl === "mix" && MIX_OK[prev]) { state.mixBody = prev; state.mixHead = MIX_OK[prev][0]; } if (TEMPLATES[state.tpl]) applyTemplate(state, state.tpl); if (state.tpl === "upload" && !upload) toast("Choose a PNG of your pixel art"); syncForm(); }
   else if (id === "race") { readForm(); applyRace(state, e.target.value); syncForm(); }
   else if (id === "cls") { readForm(); applyClass(state, e.target.value); syncForm(); }
   else readForm();
@@ -1991,7 +1983,7 @@ const pick = o => { const k = Object.keys(o); return k[Math.floor(Math.random() 
 $("random").addEventListener("click", () => {
   if (state.tpl !== "builder") {
     const tp = pick(ART); state.recolor = {}; state.name = NAMES[Math.floor(Math.random() * NAMES.length)];
-    const hd = Math.random() < 0.4 ? MIX_OK[tp][Math.floor(Math.random() * MIX_OK[tp].length)] : null;
+    const hd = null; // random heroes are always a figure as drawn
     if (hd) { state.tpl = "mix"; state.mixBody = tp; state.mixHead = hd; } else state.tpl = tp;
     state.race = ART[hd || tp].race || state.race;
     syncForm(); rebuild();
@@ -2021,10 +2013,9 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 2000);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; controls.autoRotate = false; controls.autoRotateSpeed = 1.6;
-scene.add(new THREE.HemisphereLight(0xffffff, 0x8a90a0, 2.1));
-scene.add(new THREE.AmbientLight(0xffffff, 0.5));
-const key = new THREE.DirectionalLight(0xffffff, 2.1); key.position.set(30, 60, 45); scene.add(key);
-const viewLight = new THREE.DirectionalLight(0xffffff, 1.9); viewLight.position.set(0.3, 0.4, 1); camera.add(viewLight); scene.add(camera); // light from the viewer so the face being looked at is lit
+scene.add(new THREE.HemisphereLight(0xffffff, 0x6a7080, 1.7));
+const key = new THREE.DirectionalLight(0xffffff, 1.8); key.position.set(30, 60, 45); scene.add(key);
+const viewLight = new THREE.DirectionalLight(0xffffff, 0.9); viewLight.position.set(0.3, 0.4, 1); camera.add(viewLight); scene.add(camera); // light from the viewer so the face being looked at is lit
 const rim = new THREE.DirectionalLight(0x9fb4ff, 0.7); rim.position.set(-40, 30, -50); scene.add(rim);
 const grid = new THREE.GridHelper(120, 24, 0x7a8394, 0x7a8394); grid.material.transparent = true; grid.material.opacity = 0.25; scene.add(grid);
 let meshObj = null, mono = false, current = null, firstFrame = true;
