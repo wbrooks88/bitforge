@@ -121,7 +121,7 @@ dialog.editor::backdrop { background: rgba(10, 12, 18, 0.55); }
         <button class="primary" id="fromText">Build from text</button>
         <button id="random">Random hero</button>
       </div>
-      <p class="hint">Try words like race (elf, orc, tiefling), class (ranger, wizard), monsters (skeleton, zombie, cultist, lich), gear (axe, bow, torch, hood, crown) and colors ("blue robe", "blonde hair", "silver armor").</p>
+      <p class="hint">Try words like race (elf, orc, tiefling), class (ranger, wizard, bard, knight, berserker), monsters (skeleton, zombie, cultist, lich), gear (axe, bow, torch, hood, crown) and colors ("blue robe", "blonde hair", "silver armor").</p>
     </section>
 
     <section>
@@ -167,6 +167,7 @@ dialog.editor::backdrop { background: rgba(10, 12, 18, 0.55); }
         <label class="f">Base size<select id="baseSize"><option value="25">25mm (1")</option><option value="32">32mm</option><option value="40">40mm</option><option value="50">50mm (2")</option></select></label>
         <label class="f">Base height<select id="baseH"><option value="4">4mm</option><option value="5">5mm</option><option value="6">6mm</option></select></label>
         <label class="f">Max colors<select id="maxColors"><option value="all">No limit</option><option value="8">8 (incl. black)</option><option value="5">5 (incl. black, tuned)</option><option value="4">4 (one AMS)</option><option value="3">3</option><option value="2">2</option></select></label>
+        <label class="f">Outline<select id="outline"><option value="thin">Thin (1 pixel)</option><option value="thick">Thick (2 pixels, chunkier)</option></select></label>
         <label class="f">Click fit<select id="fit"><option value="tight">Tight (0.10mm)</option><option value="normal">Normal (0.15mm)</option><option value="loose">Loose (0.25mm)</option></select></label>
       </div>
       <p class="hint">Minis are flat pixel standees: a black outline plate with the colored pixels raised a few layers on the front. Print the figure lying on its back (colors only change in the top layers), then click its tab into the slot in the base. Files are in millimetres, Z up; 3MF and OBJ keep colors for multi-material printers.</p>
@@ -245,7 +246,7 @@ const state = {
   name: "Bromli", race: "dwarf", cls: "cleric", outfit: "robe", head: "none", weapon: "hammer", offhand: "shield",
   hair: "short", beard: "long", cape: true,
   colors: { skin: "#d9a07a", hair: "#8a4a22", primary: "#e8e2d0", secondary: "#a8262b", metal: "#a9b0bb", leather: "#6b4428", gem: "#59d0ff", trim: "#e2b440", bone: "#ece3c8", base: "#4a4f5a" },
-  tpl: "cleric", scale: "28", baseShape: "round", baseSize: "25", baseH: "4", fit: "normal", maxColors: "5", shading: false, backColor: true,
+  tpl: "cleric", scale: "28", baseShape: "round", baseSize: "25", baseH: "4", fit: "normal", outline: "thin", maxColors: "5", shading: false, backColor: true,
 };
 
 /* ---------------- Voxel grid ---------------- */
@@ -536,6 +537,9 @@ const TEMPLATES = {
   cleric: {"label": "Cleric (mace & shield)", "colors": {"primary": "#3b5aa8", "secondary": "#b3262b", "metal": "#aab2be", "leather": "#6b4428", "trim": "#e2b440"}, p5: { leather: "metal", trim: "metal", blade: "metal", hair: "secondary", bone: "metal", gem: "primary", flame: "secondary" } },
   ranger: {"label": "Ranger (longbow & cloak)", "colors": {"primary": "#4c7a3e", "secondary": "#9a3a2c", "leather": "#6b4428", "trim": "#e2b440"}, p5: { bone: "skin", metal: "leather", blade: "leather", trim: "leather", hair: "leather", gem: "secondary", flame: "secondary" } },
   barbarian: {"label": "Barbarian (great axe)", "colors": {"primary": "#3b5aa8", "secondary": "#a33b2a", "hair": "#8a4a22", "metal": "#aab2be", "leather": "#6b4428", "trim": "#e2b440"}, p5: { primary: "secondary", hair: "leather", trim: "metal", blade: "metal", bone: "metal", gem: "metal", flame: "secondary" } },
+  bard: {"label": "Bard (lute & feathered hat)", "colors": {"primary": "#3f7a3a", "secondary": "#8a2a3a", "hair": "#5a3a22", "leather": "#6b4428", "trim": "#d9b25a", "bone": "#ece3c8", "metal": "#aab2be"}, p5: { hair: "leather", metal: "leather", trim: "skin", bone: "skin", blade: "skin", gem: "secondary", flame: "secondary" } },
+  berserker: {"label": "Berserker (horned helm & double axe)", "colors": {"primary": "#5a3a24", "secondary": "#a8482a", "hair": "#6a3a1e", "metal": "#9aa2ae", "leather": "#5a3a24", "trim": "#e2b440", "bone": "#ece3c8"}, p5: { hair: "leather", primary: "leather", bone: "skin", trim: "metal", blade: "metal", gem: "secondary", flame: "secondary" } },
+  knight: {"label": "Knight (great helm, hammer & shield)", "colors": {"primary": "#2f56a8", "secondary": "#2f56a8", "metal": "#aab2be", "leather": "#6b4428", "trim": "#e2b440", "bone": "#e2b440"}, p5: { secondary: "primary", hair: "leather", bone: "trim", blade: "metal", gem: "trim", flame: "trim", skin: "metal" } },
   skeleton: {"label": "Skeleton warrior", "colors": {"bone": "#e8e0c8", "metal": "#aab2be"}, "monster": true, p5: { trim: "metal", blade: "metal", secondary: "leather", primary: "leather" } },
   zombie: {"label": "Zombie", "colors": {"skin": "#7fa35a", "hair": "#3a2a1a", "primary": "#4a6a9a", "secondary": "#7a2e2e"}, "monster": true, p5: { leather: "hair", bone: "skin", metal: "hair", blade: "hair", trim: "hair" } },
   cultist: {"label": "Cultist", "colors": {"secondary": "#8a1f2a", "gem": "#ffd84a", "skin": "#d9a07a", "leather": "#6b4428", "trim": "#e2b440", "flame": "#ff8a1e"}, "monster": true, p5: { bone: "trim", gem: "flame", leather: "secondary", primary: "secondary", metal: "trim", blade: "trim" } },
@@ -895,6 +899,124 @@ const POSES = {
     if (A.snout) drawSnoutCrest(C, A);
     axe();
   },
+  bard(C, A, back) {
+    const S = A.sh, W = A.waist;
+    drawLegs(C, A, { spread: 2, pants: "leather", boots: "leather", bootH: Math.max(5, Math.round(A.hip * 0.42)) });
+    // long coat with tails, open over a vest
+    C.part("primary").poly([[-A.sw + 1, S], [A.sw - 1, S], [A.sw + 1, A.hip - 8], [A.sw - 3, A.hip - 6], [-A.sw + 2, A.hip - 6], [-A.sw - 2, A.hip - 8]]);
+    if (!back) { C.part("leather").poly([[-3, S - 1], [2, S - 1], [2, A.hip - 3], [-0.5, A.hip - 5], [-3, A.hip - 3]]); C.part("trim", false).px(-1, S - 5).px(-1, S - 9).px(-1, W + 2); }
+    else C.part("ink", false).rect(-1, 0, A.hip - 6, A.hip - 1, "ink"); // tail split
+    C.part("secondary").rect(-A.sw + 2, A.sw - 3, W - 1, W); // sash
+    C.part("primary").rect(-A.sw + 2, -A.sw + 4, S - 2, S + 1).rect(A.sw - 5, A.sw - 3, S - 2, S + 1); // collar
+    // lute across the body: bowl low on the left, neck up to the right
+    const lute = () => {
+      const prev = C.layer("front");
+      const bx = -0.5, by = W + 1;
+      C.part("leather").line(bx + 4, by + 3, A.sw + 6, S + 4, 2.4); // neck
+      C.part("leather").rect(A.sw + 5, A.sw + 8, S + 4, S + 6).px(A.sw + 9, S + 6); // pegbox
+      C.part("leather").ell(bx, by, 6.8, 5.8);
+      C.part("trim", false).ell(bx, by, 5.2, 4.2);
+      C.part("ink", false).ell(bx + 1, by + 1, 1.6, 1.6, "ink").rect(Math.round(bx) - 3, Math.round(bx) - 3, by - 3, by - 1, "ink");
+      drawArm(C, A.sw - 1, S - 3, A.sw + 4, S - 3, A.sw + 4, S + 3, "primary"); // fretting hand on the neck
+      drawArm(C, -A.sw + 1, S - 3, -A.sw - 3, W, bx - 5, by - 1, "primary"); // strumming hand at the strings
+      C.layer(prev);
+    };
+    drawHead(C, A, { back });
+    if (A.beard && !back) drawBeard(C, A, false);
+    if (A.race !== "dragonborn") drawHair(C, A, "long", back);
+    // wide brimmed hat with a long feather
+    const hw = A.hw, t = A.top;
+    C.part("secondary").rect(-hw - 1, hw, t, t + 5).rect(-hw, hw - 1, t + 6, t + 6).rect(-hw - 5, hw + 4, t - 1, t).rect(-hw - 6, -hw - 3, t, t).rect(hw + 2, hw + 5, t, t);
+    C.part("leather", false).rect(-hw - 1, hw, t + 1, t + 1);
+    C.part("bone").line(-hw + 1, t + 2, -hw - 6, t + 11, 2.2).line(-hw - 6, t + 11, -hw - 7, t + 14, 1.6);
+    if (A.horns) drawHorns(C, A, A.top + 2);
+    lute();
+  },
+  berserker(C, A, back) {
+    const S = A.sh, W = A.waist;
+    drawLegs(C, A, { spread: 4, pants: "leather", boots: "secondary", bootH: Math.max(5, Math.round(A.hip * 0.42)) });
+    C.part("skin").poly([[-A.sw, S], [A.sw - 1, S], [A.sw - 2, W], [-A.sw + 1, W]]); C.rect(-A.sw + 2, A.sw - 3, A.hip - 1, W);
+    if (!back) C.part("ink", false).rect(-A.sw + 3, -2, S - 5, S - 5, "ink").rect(1, A.sw - 4, S - 5, S - 5, "ink").rect(-1, 0, W + 2, S - 7, "ink").rect(-4, -3, W + 3, W + 3, "ink").rect(2, 3, W + 3, W + 3, "ink").rect(-4, -3, W + 6, W + 6, "ink").rect(2, 3, W + 6, W + 6, "ink");
+    else C.part("ink", false).rect(-1, 0, W + 2, S - 4, "ink");
+    C.part("secondary").rect(-A.sw + 1, A.sw - 2, A.hip - 1, W - 1); C.part("trim", false).rect(-2, 1, A.hip - 1, W - 1);
+    C.part("leather").poly([[-A.hp + 1, A.hip - 1], [A.hp - 2, A.hip - 1], [A.hp - 3, A.hip - 7], [-A.hp + 2, A.hip - 7]]); // loincloth
+    // fur mantle over both shoulders
+    for (const sd of [-1, 1]) { C.part("leather"); const x = sd < 0 ? -A.sw : A.sw - 1; C.ell(x, S - 1, 4.4, 3.6); for (let i = -3; i <= 3; i += 2) C.rect(x + i, x + i, S - 5, S - 4); }
+    C.part("leather").rect(-A.sw + 2, A.sw - 3, S - 1, S);
+    // big double axe stood upright at the right, both hands on it
+    const axe = () => {
+      const prev = C.layer("front");
+      const X = A.sw + 6, Y = A.eye - 2;
+      drawArm(C, -A.sw + 1, S - 3, -A.sw - 3, W + 1, -A.sw - 2, W - 4, "skin", { cuff: "secondary" });
+      C.part("leather").rect(X - 1, X, 1, Y + 7);
+      for (const sd of [-1, 1]) {
+        const P = (a, b) => [X - 0.5 + sd * a, Y + b];
+        C.part("metal").poly([P(1, 3), P(4, 4), P(7, 8), P(8, 2), P(8, -2), P(7, -7), P(4, -3), P(1, -2)]);
+        C.part("blade", false).poly([P(6, 7.5), P(8, 2), P(8, -2), P(6, -6.5), P(6.5, -2), P(6.5, 2)]);
+      }
+      C.part("metal").rect(X - 2, X + 1, Y + 7, Y + 8);
+      drawArm(C, A.sw - 1, S - 3, A.sw + 4, S - 7, X - 0.5, W + 3, "skin", { cuff: "secondary" });
+      C.part("skin").ell(X - 0.5, W + 3, 2.4, 2.4);
+      C.layer(prev);
+    };
+    drawHead(C, A, { back, noBrows: true });
+    if (A.beard && !back) drawBeard(C, A, true);
+    else if (!back) C.part("hair").rect(-A.hw + 1, A.hw - 2, A.chin, A.chin + 1).rect(-A.hw + 2, A.hw - 3, A.chin - 2, A.chin); // short beard
+    if (!back && !A.beard) C.part("ink", false).rect(-1, 0, A.chin + 2, A.chin + 2, "ink");
+    if (back && A.race !== "dragonborn") C.part("hair").rect(-A.hw, A.hw - 1, A.chin + 1, A.eye + 3);
+    // iron helm with nose guard and big curved horns
+    const hw = A.hw, t = A.top;
+    C.part("metal").rect(-hw - 1, hw, A.eye + 4, t).rect(-hw, hw - 1, t + 1, t + 2).rect(-hw + 2, hw - 3, t + 3, t + 3).rect(-hw - 1, -hw, A.eye - 1, A.eye + 3).rect(hw - 1, hw, A.eye - 1, A.eye + 3);
+    if (back) C.part("metal").rect(-hw - 1, hw, A.eye - 1, t);
+    else C.part("metal").rect(-1, 0, A.eye - 3, A.eye + 4);
+    C.part("trim", false).rect(-hw - 1, hw, A.eye + 5, A.eye + 5);
+    for (const sd of [-1, 1]) {
+      C.part("bone"); const x = sd < 0 ? -hw - 1 : hw;
+      C.line(x, A.eye + 6, x + sd * 5, A.eye + 9, 3).line(x + sd * 5, A.eye + 9, x + sd * 7, t + 3, 2.6).line(x + sd * 7, t + 3, x + sd * 6, t + 7, 2);
+    }
+    axe();
+  },
+  knight(C, A, back) {
+    const S = A.sh, W = A.waist;
+    drawCape(C, A, A.sw + 5, A.sw + 5, 2, back);
+    drawLegs(C, A, { spread: 3, pants: "metal", boots: "metal" });
+    C.part("metal").rect(-A.sw + 1, A.sw - 2, A.hip - 3, S); // mail
+    C.part("primary").poly([[-A.sw + 2, S], [A.sw - 2, S], [A.sw - 3, A.hip - 1], [A.sw - 5, A.hip - 9], [-A.sw + 4, A.hip - 9], [-A.sw + 2, A.hip - 1]]); // tabard
+    C.part("trim", false).rect(-A.sw + 2, -A.sw + 2, A.hip - 1, S - 1).rect(A.sw - 3, A.sw - 3, A.hip - 1, S - 1).rect(-A.sw + 4, A.sw - 5, A.hip - 9, A.hip - 9);
+    if (!back) C.part("trim", false).rect(-1, 0, W + 3, S - 4).rect(-3, 2, S - 7, S - 6);
+    C.part("leather").rect(-A.sw + 1, A.sw - 2, W - 1, W); C.part("trim", false).rect(-1, 0, W - 1, W);
+    for (const sd of [-1, 1]) { const x = sd < 0 ? -A.sw + 0.5 : A.sw - 0.5; C.part("metal").ell(x, S - 1, 5, 4.2); C.part("trim", false).rect(Math.round(x) - 4, Math.round(x) + 3, S - 4, S - 4); } // big pauldrons
+    // hammer resting on the right shoulder
+    const hx = A.sw + 4, hy = S - 7;
+    drawArm(C, A.sw - 1, S - 3, A.sw + 5, S - 9, hx, hy, "metal", { hand: "metal" });
+    const hammer = layered((C) => {
+      C.part("leather").line(hx + 1, hy - 4, A.sw + 2, A.top - 1, 2.2);
+      C.part("metal").rect(A.sw - 2, A.sw + 6, A.top - 3, A.top + 3).rect(A.sw - 3, A.sw + 7, A.top - 2, A.top + 2);
+      C.part("blade", false).rect(A.sw + 6, A.sw + 7, A.top - 2, A.top + 2);
+      C.part("trim", false).rect(A.sw + 1, A.sw + 3, A.top - 3, A.top + 3);
+      C.part("metal").ell(hx, hy, 2.3, 2.3);
+    }, "front");
+    // big heater shield on the left
+    drawArm(C, -A.sw + 1, S - 3, -A.sw - 3, S - 9, -A.sw - 2, S - 12, "metal", { hand: "metal" });
+    const shield = layered((C) => {
+      const cx = -A.sw - 2.5, top = S - 1, w = 7.5, h = 21;
+      const pts = [[cx - w, top], [cx + w, top], [cx + w, top - h * 0.45], [cx + 1, top - h], [cx - 1, top - h], [cx - w, top - h * 0.45]];
+      C.part("metal").poly(pts);
+      const ins = pts.map(([x, y]) => [cx + (x - cx) * 0.74, top - 2 + (y - top) * 0.82]);
+      C.part(back ? "leather" : "metal").poly(ins);
+      if (!back) C.part("trim", false).rect(Math.round(cx) - 1, Math.round(cx), top - 15, top - 4).rect(Math.round(cx) - 4, Math.round(cx) + 3, top - 8, top - 7);
+      else C.part("metal", false).rect(Math.round(cx) - 4, Math.round(cx) + 3, top - 9, top - 8);
+    }, "front");
+    shield(C);
+    // great helm
+    drawHead(C, A, { back, noEars: true, noBrows: true, noMouth: true });
+    const hw = A.hw, t = A.top;
+    C.part("metal").rect(-hw - 1, hw, A.chin, t).rect(-hw, hw - 1, A.chin - 1, t + 1).rect(-hw + 2, hw - 3, t + 2, t + 2);
+    if (!back) { C.part("ink", false).rect(-hw + 1, -1, A.eye, A.eye + 1, "ink").rect(1, hw - 2, A.eye, A.eye + 1, "ink"); for (const x of [-4, -2, 1, 3]) C.px(x, A.chin + 3, "ink"); C.part("trim", false).rect(-1, 0, A.chin, t + 1); }
+    for (const sd of [-1, 1]) { C.part("metal"); const x = sd < 0 ? -hw - 2 : hw + 1; C.poly(sd < 0 ? [[x + 1, t - 6], [x - 3, t + 2], [x + 1, t]] : [[x, t - 6], [x + 4, t + 2], [x, t]]); } // fins
+    if (A.horns || A.snout) drawHorns(C, A, A.top + 1);
+    hammer(C);
+  },
   skeleton(C, A, back) {
     const S = A.sh, W = A.waist, B = "bone";
     for (const sd of [-1, 1]) { // legs
@@ -1029,6 +1151,15 @@ function uploadSprite(s, back = false) {
   return finishSprite(cells, ps, !outlined);
 }
 function makeSprite(s, back = false) {
+  const sp = makeSprite1(s, back);
+  if (s.outline !== "thick" || s.tpl === "fittest") return sp;
+  // thick outline: one more ink ring around the silhouette, lifted so the bottom ring stays at y = 0
+  const xy = k => [Math.floor(k / 2000) - 500, (k % 2000) - 500], pix = new Map();
+  for (const [k, m] of sp.pix) { const [x, y] = xy(k); pix.set(spriteKey(x, y + 1), m); }
+  for (const k of [...pix.keys()]) { const [x, y] = xy(k); for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) { const kk = spriteKey(x + a, y + b); if (!pix.has(kk)) pix.set(kk, "ink"); } }
+  return { ...sp, pix, minX: sp.minX - 1, maxX: sp.maxX + 1, maxY: sp.maxY + 2, hip: sp.hip + 1, sw: sp.sw + 1 };
+}
+function makeSprite1(s, back = false) {
   if (s.tpl === "fittest") { // a plain black stub with the normal snap tab, for the fit test kit
     const pix = new Map(), ps = (TH[s.scale] || 34) / (anchors("human").top + 4);
     for (let x = -7; x <= 6; x++) for (let y = 0; y <= 12; y++) pix.set(spriteKey(x, y), "ink");
@@ -1042,7 +1173,7 @@ function makeSprite(s, back = false) {
 function applyTemplate(s, name) {
   s.tpl = name; const T = TEMPLATES[name]; if (!T) return;
   Object.assign(s.colors, T.colors);
-  if (!T.monster) { s.colors.skin = RACES[s.race].skin; const hero = { fighter: "fighter", rogue: "rogue", wizard: "wizard", cleric: "cleric", ranger: "ranger", barbarian: "barbarian" }[name]; if (hero) s.cls = hero; }
+  if (!T.monster) { s.colors.skin = RACES[s.race].skin; const hero = { fighter: "fighter", rogue: "rogue", wizard: "wizard", cleric: "cleric", ranger: "ranger", barbarian: "barbarian", bard: "rogue", berserker: "barbarian", knight: "fighter" }[name]; if (hero) s.cls = hero; }
 }
 
 /* Voxel size in mm for the chosen scale. A human figure is 24 coarse (48 fine) voxels tall. */
@@ -1425,12 +1556,12 @@ const NOUN_SLOT = {
   magic: "gem", orb: "gem", gem: "gem", crystal: "gem", flame: "gem", base: "base", bone: "bone", skull: "bone", gold: "trim", trimmings: "trim",
 };
 const RACE_WORDS = { human: "human", man: "human", woman: "human", elf: "elf", elven: "elf", elvish: "elf", dwarf: "dwarf", dwarven: "dwarf", halfling: "halfling", hobbit: "halfling", gnome: "gnome", orc: "orc", orcish: "orc", "half-orc": "orc", goblin: "orc", tiefling: "tiefling", demon: "tiefling", dragonborn: "dragonborn", dragon: "dragonborn", lizardfolk: "dragonborn", kobold: "dragonborn" };
-const CLASS_WORDS = { fighter: "fighter", warrior: "fighter", knight: "fighter", soldier: "fighter", barbarian: "barbarian", berserker: "barbarian", wizard: "wizard", mage: "wizard", sorcerer: "wizard", warlock: "wizard", witch: "wizard", cleric: "cleric", priest: "cleric", monk: "cleric", druid: "ranger", rogue: "rogue", thief: "rogue", assassin: "rogue", ranger: "ranger", hunter: "ranger", archer: "ranger", paladin: "paladin", templar: "paladin" };
+const CLASS_WORDS = { fighter: "fighter", warrior: "fighter", knight: "knight", soldier: "fighter", barbarian: "barbarian", berserker: "berserker", viking: "berserker", bard: "bard", minstrel: "bard", troubadour: "bard", wizard: "wizard", mage: "wizard", sorcerer: "wizard", warlock: "wizard", witch: "wizard", cleric: "cleric", priest: "cleric", monk: "cleric", druid: "ranger", rogue: "rogue", thief: "rogue", assassin: "rogue", ranger: "ranger", hunter: "ranger", archer: "ranger", paladin: "paladin", templar: "paladin" };
 const WEAPON_WORDS = { sword: "sword", longsword: "sword", blade: "sword", rapier: "sword", axe: "axe", greataxe: "axe", hammer: "hammer", warhammer: "hammer", maul: "hammer", mace: "mace", flail: "mace", club: "mace", staff: "staff", stave: "staff", wand: "staff", spear: "spear", lance: "spear", trident: "spear", polearm: "spear", dagger: "dagger", knife: "dagger", daggers: "dagger", bow: "bow", longbow: "bow", unarmed: "none" };
 const HEAD_WORDS = { helmet: "helmet", helm: "helmet", horned: "horned", horns: "horned", hat: "wizard", hood: "hood", hooded: "hood", crown: "crown", king: "crown", queen: "crown", cap: "cap", beret: "cap", feather: "cap" };
 
 const MONSTER_WORDS = { skeleton: "skeleton", skeletal: "skeleton", undead: "skeleton", bones: "skeleton", zombie: "zombie", ghoul: "zombie", rotting: "zombie", cultist: "cultist", cult: "cultist", acolyte: "cultist", lich: "lich", necromancer: "lich" };
-const CLASS_TPL = { fighter: "fighter", paladin: "fighter", barbarian: "barbarian", wizard: "wizard", cleric: "cleric", rogue: "rogue", ranger: "ranger" };
+const CLASS_TPL = { bard: "bard", knight: "knight", berserker: "berserker", fighter: "fighter", paladin: "fighter", barbarian: "barbarian", wizard: "wizard", cleric: "cleric", rogue: "rogue", ranger: "ranger" };
 function parseText(text, cur) {
   const words = text.toLowerCase().match(/[a-z]+(?:-[a-z]+)?/g) || [];
   const s = structuredClone(cur), notes = [];
@@ -1438,7 +1569,7 @@ function parseText(text, cur) {
   for (const w of words) { if (RACE_WORDS[w] && !race) race = RACE_WORDS[w]; if (CLASS_WORDS[w] && !cls) cls = CLASS_WORDS[w]; if (MONSTER_WORDS[w] && !monster) monster = MONSTER_WORDS[w]; }
   if (race) applyRace(s, race);
   if (monster) applyTemplate(s, monster);
-  else if (s.tpl === "builder") { if (cls) applyClass(s, cls); if (race) applyRace(s, race); }
+  else if (s.tpl === "builder") { if (cls) applyClass(s, { bard: "rogue", knight: "fighter", berserker: "barbarian" }[cls] || cls); if (race) applyRace(s, race); }
   else if (cls) applyTemplate(s, CLASS_TPL[cls] || "fighter");
   else if (TEMPLATES[s.tpl] && TEMPLATES[s.tpl].monster && race) applyTemplate(s, "fighter");
   else if (race && TEMPLATES[s.tpl]) s.colors.skin = RACES[race].skin;
@@ -1527,7 +1658,7 @@ $("swatches").innerHTML = COLOR_SLOTS.map(([k, l]) => `<label class="sw"><input 
 
 function syncForm() {
   $("name").value = state.name;
-  for (const k of ["tpl", "race", "cls", "outfit", "head", "weapon", "offhand", "hair", "beard", "scale", "baseShape", "baseSize", "baseH", "fit", "maxColors"]) $(k).value = state[k];
+  for (const k of ["tpl", "race", "cls", "outfit", "head", "weapon", "offhand", "hair", "beard", "scale", "baseShape", "baseSize", "baseH", "fit", "outline", "maxColors"]) $(k).value = state[k];
   updateMode();
   $("cape").checked = state.cape; $("shading").checked = state.shading; $("backColor").checked = state.backColor;
   for (const [k] of COLOR_SLOTS) $("c_" + k).value = state.colors[k];
@@ -1535,7 +1666,7 @@ function syncForm() {
 }
 function readForm() {
   state.name = $("name").value.trim() || "Hero";
-  for (const k of ["outfit", "head", "weapon", "offhand", "hair", "beard", "scale", "baseShape", "baseSize", "baseH", "fit", "maxColors"]) state[k] = $(k).value;
+  for (const k of ["outfit", "head", "weapon", "offhand", "hair", "beard", "scale", "baseShape", "baseSize", "baseH", "fit", "outline", "maxColors"]) state[k] = $(k).value;
   state.cape = $("cape").checked; state.shading = $("shading").checked; state.backColor = $("backColor").checked;
   for (const [k] of COLOR_SLOTS) state.colors[k] = $("c_" + k).value;
 }
@@ -1784,7 +1915,7 @@ const stripOutline = pix => {
 };
 function edOpen() {
   if (state.tpl === "custom" && edited) ED.maps = { front: new Map(edited.front), back: new Map(edited.back) }, ED.ps = edited.psRel * (TH[state.scale] || 34);
-  else { const f = makeSprite(state, false), b = makeSprite(state, true); ED.maps = { front: stripOutline(f.pix), back: stripOutline(b.pix) }; ED.ps = f.ps || voxelSize(state.scale) / 2;
+  else { const thin = { ...state, outline: "thin" }, f = makeSprite(thin, false), b = makeSprite(thin, true); ED.maps = { front: stripOutline(f.pix), back: stripOutline(b.pix) }; ED.ps = f.ps || voxelSize(state.scale) / 2;
     for (const k of ED.maps.front.keys()) if (!ED.maps.back.has(k)) ED.maps.back.set(k, ED.maps.front.get(k));
     for (const k of [...ED.maps.back.keys()]) if (!ED.maps.front.has(k)) ED.maps.back.delete(k); }
   ED.orig = { front: new Map(ED.maps.front), back: new Map(ED.maps.back) };
