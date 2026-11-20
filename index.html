@@ -1366,6 +1366,17 @@ function uploadSprite(s, back = false) {
   let outlined = true;
   for (const [k, m] of cells) { const x = Math.floor(k / 2000) - 500, y = (k % 2000) - 500; if (m !== "ink" && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => !cells.has(spriteKey(x + a, y + b)))) { outlined = false; break; } }
   // back: the same picture, so seen from behind it is the front's mirror image and lines up with it pixel for pixel
+  // materials and their main shade, for the same color pickers the built-in figures have
+  const cnt = new Map();
+  for (const [k, m] of cells) if (m !== "ink") { const hx = m.slice(2), mt = matOf(hx), e = cnt.get(mt) || new Map(); e.set(hx, (e.get(hx) || 0) + 1); cnt.set(mt, e); }
+  const mids = {}; for (const [mt, e] of cnt) mids[mt] = [...e.entries()].sort((a, b) => b[1] - a[1])[0][0];
+  if (!back) { const list = Object.keys(MATS).filter(m => cnt.has(m)).map(m => ({ m, label: MATS[m], mid: "#" + mids[m] })); matInfo = { key: "upload" + U.w + "x" + U.h + list.map(x => x.m).join(), list }; }
+  const rec = s.recolor || {}, memo = {};
+  for (const [k, m] of cells) { if (m === "ink") continue; const hx = m.slice(2), mt = matOf(hx), t = rec[mt]; if (!t) continue;
+    if (!memo[hx]) { const T = rgbHsl(hexRgb(t)), Mi = rgbHsl(hexRgb("#" + mids[mt])), C = rgbHsl(hexRgb("#" + hx));
+      const sat = Mi[1] < 0.1 ? T[1] * (0.7 + C[1]) : C[1] * T[1] / Mi[1];
+      memo[hx] = hslHex([C[0] + (T[0] - Mi[0]), sat, C[2] + (T[2] - Mi[2])]).slice(1); }
+    cells.set(k, "c_" + memo[hx]); }
   const ps = Math.max(0.45, Math.min(1.4, (TH[s.scale] || 34) / (U.h + (outlined ? 1 : 3))));
   return finishSprite(cells, ps, !outlined);
 }
@@ -1918,7 +1929,7 @@ function updateMode() {
   const T = TEMPLATES[state.tpl];
   $("builderFields").hidden = state.tpl !== "builder";
   $("mixFields").hidden = state.tpl !== "mix";
-  $("matRow").hidden = !(ART[state.tpl] || state.tpl === "mix");
+  $("matRow").hidden = !(ART[state.tpl] || state.tpl === "mix" || (state.tpl === "upload" && upload));
   $("uploadRow").hidden = state.tpl !== "upload";
   $("raceRow").hidden = state.tpl !== "builder"; // the hand-pixeled figures have their own race (swap heads in mix & match)
   $("shadingRow").hidden = state.tpl !== "builder";
@@ -1975,7 +1986,7 @@ $("upFile").addEventListener("change", e => {
   const url = URL.createObjectURL(f), img = new Image();
   img.onload = () => {
     try {
-      upload = readUpload(img); state.tpl = "upload";
+      upload = readUpload(img); state.tpl = "upload"; state.recolor = {};
       if (state.name === "Bromli" || !state.name) state.name = f.name.replace(/\.[^.]+$/, "").slice(0, 24) || "Hero";
       $("upInfo").textContent = `Loaded ${upload.w}×${upload.h} pixels` + (upload.shrunk ? ` (scaled down from a larger image)` : upload.scaleFactor > 1 ? ` (shrunk from ${upload.scaleFactor}× upscale)` : "") + (upload.bgRemoved ? ", background removed" : "") + ". Near-black pixels become the black plate.";
       firstFrame = true; syncForm(); rebuild();
@@ -2088,7 +2099,7 @@ function rebuild() {
   if (firstFrame) { frame(bb, H); firstFrame = false; }
   $("title").textContent = state.name;
   const fx = [1e9, -1e9]; for (let i = 0; i < parts.fig.verts.length; i += 3) { fx[0] = Math.min(fx[0], parts.fig.verts[i]); fx[1] = Math.max(fx[1], parts.fig.verts[i]); }
-  if (ART[state.tpl] || state.tpl === "mix") renderMats();
+  if (ART[state.tpl] || state.tpl === "mix" || (state.tpl === "upload" && upload)) renderMats();
   if (state.tpl !== "upload" && !ART[state.tpl] && state.tpl !== "mix") { // only show the color pickers this figure actually uses
     const used = new Set([...parts.fig.triColor, ...(parts.base ? parts.base.triColor : [])].map(c => c.replace(/[+-]$/, "")));
     if (used.has("blade")) used.add("metal");
