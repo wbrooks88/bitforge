@@ -167,7 +167,7 @@ dialog.editor::backdrop { background: rgba(10, 12, 18, 0.55); }
         <label class="f">Base size<select id="baseSize"><option value="25">25mm (1")</option><option value="32">32mm</option><option value="40">40mm</option><option value="50">50mm (2")</option></select></label>
         <label class="f">Base height<select id="baseH"><option value="4">4mm</option><option value="5">5mm</option><option value="6">6mm</option></select></label>
         <label class="f">Max colors<select id="maxColors"><option value="all">No limit</option><option value="8">8 (incl. black)</option><option value="5">5 (incl. black, tuned)</option><option value="4">4 (one AMS)</option><option value="3">3</option><option value="2">2</option></select></label>
-        <label class="f">Outline<select id="outline"><option value="thin">Thin (1 pixel)</option><option value="thick">Thick (2 pixels, chunkier)</option></select></label>
+        <label class="f">Outline<select id="outline"><option value="thick">Bold (2 pixels)</option><option value="thin">Thin (1 pixel)</option></select></label>
         <label class="f">Click fit<select id="fit"><option value="tight">Tight (0.10mm)</option><option value="normal">Normal (0.15mm)</option><option value="loose">Loose (0.25mm)</option></select></label>
       </div>
       <p class="hint">Minis are flat pixel standees: a black outline plate with the colored pixels raised a few layers on the front. Print the figure lying on its back (colors only change in the top layers), then click its tab into the slot in the base. Files are in millimetres, Z up; 3MF and OBJ keep colors for multi-material printers.</p>
@@ -246,7 +246,7 @@ const state = {
   name: "Bromli", race: "dwarf", cls: "cleric", outfit: "robe", head: "none", weapon: "hammer", offhand: "shield",
   hair: "short", beard: "long", cape: true,
   colors: { skin: "#d9a07a", hair: "#8a4a22", primary: "#e8e2d0", secondary: "#a8262b", metal: "#a9b0bb", leather: "#6b4428", gem: "#59d0ff", trim: "#e2b440", bone: "#ece3c8", base: "#4a4f5a" },
-  tpl: "cleric", scale: "28", baseShape: "round", baseSize: "25", baseH: "4", fit: "normal", outline: "thin", maxColors: "5", shading: false, backColor: true,
+  tpl: "cleric", scale: "28", baseShape: "round", baseSize: "25", baseH: "4", fit: "normal", outline: "thick", maxColors: "5", shading: false, backColor: true,
 };
 
 /* ---------------- Voxel grid ---------------- */
@@ -540,7 +540,7 @@ const TEMPLATES = {
   bard: {"label": "Bard (lute & feathered hat)", "colors": {"primary": "#3f7a3a", "secondary": "#8a2a3a", "hair": "#5a3a22", "leather": "#6b4428", "trim": "#d9b25a", "bone": "#ece3c8", "metal": "#aab2be"}, p5: { hair: "leather", metal: "leather", trim: "skin", bone: "skin", blade: "skin", gem: "secondary", flame: "secondary" } },
   berserker: {"label": "Berserker (horned helm & double axe)", "colors": {"primary": "#5a3a24", "secondary": "#a8482a", "hair": "#6a3a1e", "metal": "#9aa2ae", "leather": "#5a3a24", "trim": "#e2b440", "bone": "#ece3c8"}, p5: { hair: "leather", primary: "leather", bone: "skin", trim: "metal", blade: "metal", gem: "secondary", flame: "secondary" } },
   knight: {"label": "Knight (great helm, hammer & shield)", "colors": {"primary": "#2f56a8", "secondary": "#2f56a8", "metal": "#aab2be", "leather": "#6b4428", "trim": "#e2b440", "bone": "#e2b440"}, p5: { secondary: "primary", hair: "leather", bone: "trim", blade: "metal", gem: "trim", flame: "trim", skin: "metal" } },
-  skeleton: {"label": "Skeleton warrior", "colors": {"bone": "#e8e0c8", "metal": "#aab2be"}, "monster": true, p5: { trim: "metal", blade: "metal", secondary: "leather", primary: "leather" } },
+  skeleton: {"label": "Skeleton warrior", "colors": {"bone": "#e8e0c8", "metal": "#8f969e", "secondary": "#7a2e2e", "leather": "#6b4428"}, "monster": true, p5: { trim: "metal", blade: "metal", secondary: "leather", primary: "leather" } },
   zombie: {"label": "Zombie", "colors": {"skin": "#7fa35a", "hair": "#3a2a1a", "primary": "#4a6a9a", "secondary": "#7a2e2e"}, "monster": true, p5: { leather: "hair", bone: "skin", metal: "hair", blade: "hair", trim: "hair" } },
   cultist: {"label": "Cultist", "colors": {"secondary": "#8a1f2a", "gem": "#ffd84a", "skin": "#d9a07a", "leather": "#6b4428", "trim": "#e2b440", "flame": "#ff8a1e"}, "monster": true, p5: { bone: "trim", gem: "flame", leather: "secondary", primary: "secondary", metal: "trim", blade: "trim" } },
   lich: {"label": "Lich (crowned skull)", "colors": {"primary": "#4b2a73", "secondary": "#b3262b", "bone": "#e8e0c8", "gem": "#59ffb0", "leather": "#7a4f2c", "trim": "#e2b440"}, "monster": true, p5: { secondary: "primary", leather: "trim", metal: "bone", blade: "bone", flame: "gem" } },
@@ -743,11 +743,33 @@ function drawMace(C, x0, y0, x1, y1) {
   C.part("metal").ell(x1, y1, 3.6, 3.8).rect(X - 1, X, Y + 4, Y + 5).px(X - 4, Y + 3).px(X + 3, Y + 3).px(X - 4, Y - 3).px(X + 3, Y - 3).rect(X - 5, X - 5, Y - 1, Y).rect(X + 4, X + 4, Y - 1, Y);
   C.part("blade", false).rect(X - 2, X - 1, Y + 1, Y + 2);
 }
-function drawDagger(C, hx, hy, ang) { const dx = Math.cos(ang), dy = Math.sin(ang); C.part("trim").line(hx - dy * 2.5, hy + dx * 2.5, hx + dy * 2.5, hy - dx * 2.5, 1.6); C.part("blade").line(hx + dx * 1.5, hy + dy * 1.5, hx + dx * 9, hy + dy * 9, 2.4); C.part("leather").line(hx - dx * 3, hy - dy * 3, hx - dx * 1, hy - dy * 1, 1.8); }
+function drawDagger(C, hx, hy, ang, len = 9) { const dx = Math.cos(ang), dy = Math.sin(ang); C.part("trim").line(hx - dy * 2.5, hy + dx * 2.5, hx + dy * 2.5, hy - dx * 2.5, 1.6); C.part("blade").line(hx + dx * 1.5, hy + dy * 1.5, hx + dx * len, hy + dy * len, len > 9 ? 2.8 : 2.4); C.part("leather").line(hx - dx * 3, hy - dy * 3, hx - dx * 1, hy - dy * 1, 1.8); }
 function drawCape(C, A, w0, w1, bottom, back) {
   C.part("secondary").poly([[-A.sw + 1, A.sh + 1], [A.sw - 1, A.sh + 1], [w1, bottom + 2], [w1 - 3, bottom], [w1 - 7, bottom + 2], [-w0 + 7, bottom], [-w0 + 3, bottom + 2], [-w0, bottom]]);
 }
 
+/* ----- chunky gear helpers ----- */
+function legX(A, o, sd) { return sd * (A.lw / 2 + (o.spread ?? 2)); }
+function drawLegExtras(C, A, o = {}) {
+  // knee guards and folded boot cuffs, drawn over legs from drawLegs with the same options
+  const bootH = o.bootH ?? Math.max(4, Math.round(A.hip * 0.35));
+  for (const sd of [-1, 1]) {
+    const fx = legX(A, o, sd), kx = fx + (sd * (A.hp - A.lw / 2) - fx) * 0.35;
+    if (o.knee) C.part(o.knee).ell(kx, A.knee + 1, A.lw / 2 + 0.4, 1.8);
+    if (o.fold) { const bx0 = Math.round(fx - A.lw / 2) - 1, bx1 = Math.round(fx + A.lw / 2); C.part(o.fold).rect(bx0, bx1, bootH - 1, bootH + 1); }
+  }
+}
+function drawBelt(C, A, y, o = {}) {
+  const ins = o.inset ?? 1, x0 = -A.sw + ins, x1 = A.sw - 1 - ins;
+  C.part(o.slot || "leather").rect(x0, x1, y - 1, y + 1);
+  C.part(o.buckle || "trim", false).rect(-2, 1, y - 1, y + 1);
+  C.part("ink", false).rect(-1, 0, y, y, "ink");
+  for (const px of o.pouches || []) { C.part(o.pouchSlot || "leather").rect(px - 1, px + 2, y - 5, y - 2); C.part(o.buckle || "trim", false).rect(px, px + 1, y - 3, y - 3); }
+}
+function drawPauldron(C, x, y, rx, ry, slot = "metal", rim = "trim") {
+  C.part(slot).ell(x, y, rx, ry);
+  if (rim) { const yy = Math.round(y - ry * 0.55), h = rx * 0.8; C.part(rim, false).rect(Math.round(x - h + 0.5), Math.round(x + h - 1.5), yy, yy); }
+}
 // Held things and arms draw in the front layer, capes behind; each call is one object.
 const layered = (f, l) => (C, ...a) => { const prev = C.layer(l); f(C, ...a); C.layer(prev); };
 drawArm = layered(drawArm, "front"); drawSword = layered(drawSword, "front"); drawKiteShield = layered(drawKiteShield, "front");
@@ -756,109 +778,118 @@ drawMace = layered(drawMace, "front"); drawDagger = layered(drawDagger, "front")
 /* ----- poses ----- */
 const POSES = {
   fighter(C, A, back) {
-    const S = A.sh, W = A.waist;
-    drawCape(C, A, A.sw + 6, A.sw + 6, 2, back);
-    drawLegs(C, A, { spread: 3, pants: "metal", boots: "leather", cuff: null });
+    const S = A.sh, W = A.waist, L = { spread: 3, pants: "metal", boots: "leather", knee: "metal", fold: "leather" };
+    drawCape(C, A, A.sw + 7, A.sw + 7, 2, back);
+    drawLegs(C, A, L); drawLegExtras(C, A, L);
     C.part("metal").rect(-A.sw + 1, A.sw - 2, W, S).rect(-A.sw + 2, A.sw - 3, A.hip - 3, W); // breastplate
-    if (!back) { C.part("primary").poly([[-5, S - 1], [4, S - 1], [4, A.hip - 6], [-0.5, A.hip - 9], [-5, A.hip - 6]]); C.part("trim", false).rect(-1, 0, A.hip - 5, S - 3).rect(-4, 3, S - 6, S - 5); }
-    C.part("leather").rect(-A.sw + 2, A.sw - 3, W - 1, W + 1); C.part("trim", false).rect(-2, 1, W - 1, W + 1);
-    for (const sd of [-1, 1]) C.part("metal").ell(sd < 0 ? -A.sw + 0.5 : A.sw - 0.5, S - 1, 4, 3.4); // pauldrons
-    // sword arm (right of image) raised, shield arm (left)
-    drawArm(C, A.sw - 1, S - 3, A.sw + 4, S - 9, A.sw + 6, S - 3, "metal");
-    drawSword(C, A.sw + 6, S - 3, Math.PI * 0.32, 22, back);
-    drawArm(C, -A.sw + 1, S - 3, -A.sw - 3, S - 9, -A.sw - 1, S - 13, "metal");
-    drawKiteShield(C, -A.sw - 2.5, S - 12, 5.5, 14, back);
-    // head + helmet
+    C.part("primary").poly([[-5, S - 1], [4, S - 1], [4, A.hip - 7], [-0.5, A.hip - 10], [-5, A.hip - 7]]); // tabard
+    C.part("trim", false).rect(-5, -5, A.hip - 7, S - 1).rect(4, 4, A.hip - 7, S - 1);
+    if (!back) C.part("trim", false).rect(-1, 0, W + 3, S - 3).rect(-3, 2, S - 7, S - 6);
+    drawBelt(C, A, W, { pouches: [-A.sw + 3] });
+    for (const sd of [-1, 1]) drawPauldron(C, sd < 0 ? -A.sw + 0.5 : A.sw - 0.5, S - 1, 5, 4.2, "metal", "trim");
+    drawArm(C, A.sw - 1, S - 3, A.sw + 4, S - 9, A.sw + 6, S - 3, "metal", { hand: "leather" });
+    drawSword(C, A.sw + 6, S - 3, Math.PI * 0.32, 24, back);
+    drawArm(C, -A.sw + 1, S - 3, -A.sw - 3, S - 9, -A.sw - 1, S - 13, "metal", { hand: "leather" });
+    drawKiteShield(C, -A.sw - 2.5, S - 12, 6, 15, back);
     drawHead(C, A, { back, noEars: true, noBrows: true });
     if (A.beard && !back) drawBeard(C, A, true);
     const hw = A.hw, t = A.top;
     C.part("metal").rect(-hw - 1, hw, A.eye + 4, t + 1).rect(-hw, hw - 1, t + 2, t + 2).rect(-hw - 1, -hw, A.chin + 1, A.eye + 3).rect(hw - 1, hw, A.chin + 1, A.eye + 3);
     if (back) C.rect(-hw - 1, hw, A.chin + 1, t);
     else C.part("metal").rect(-1, 0, A.eye - 2, A.eye + 4);
-    C.part("secondary").rect(-1, 0, t + 3, t + 6).rect(-2, 1, t + 4, t + 5); // plume
+    C.part("secondary").poly([[-3, t + 2], [2, t + 2], [hw + 2, t + 2], [hw + 5, t - 2], [hw + 3, t + 5], [1, t + 8], [-3, t + 6]]); // plume
     if (A.horns || A.snout) drawHorns(C, A, A.top - 2);
   },
   rogue(C, A, back) {
-    const S = A.sh, W = A.waist;
-    drawCape(C, A, A.sw + 3, A.sw + 3, Math.round(A.hip * 0.45), back);
-    drawLegs(C, A, { spread: 4, pants: "primary", boots: "leather" });
-    C.part("primary").poly([[-A.sw + 1, S], [A.sw - 1, S], [A.sw - 2, A.hip - 1], [-A.sw + 2, A.hip - 1]]);
-    if (!back) { C.part("leather", false).line(-A.sw + 2, S - 1, A.sw - 3, A.hip, 1.6); C.part("trim", false).rect(-2, -1, S - 6, S - 5); }
-    C.part("leather").rect(-A.sw + 2, A.sw - 3, W - 2, W); C.part("trim", false).rect(-1, 0, W - 2, W);
-    // arms low and out, daggers reversed
+    const S = A.sh, W = A.waist, L = { spread: 4, pants: "primary", boots: "leather", fold: "leather", bootH: Math.max(5, Math.round(A.hip * 0.45)) };
+    drawCape(C, A, A.sw + 4, A.sw + 4, Math.round(A.hip * 0.4), back);
+    drawLegs(C, A, L); drawLegExtras(C, A, L);
+    C.part("primary").poly([[-A.sw + 1, S], [A.sw - 1, S], [A.sw - 1, A.hip - 4], [A.sw - 3, A.hip - 6], [-A.sw + 3, A.hip - 6], [-A.sw + 1, A.hip - 4]]); // jerkin
+    C.part("leather").line(-A.sw + 2, S - 1, A.sw - 3, W + 2, 2.4); // bandolier
+    if (!back) for (const f of [0.25, 0.5, 0.75]) { const x = Math.round(-A.sw + 2 + (2 * A.sw - 5) * f), y = Math.round(S - 1 - (S - W - 3) * f); C.part("metal", false).rect(x, x, y + 1, y + 3); }
+    drawBelt(C, A, W - 1, { pouches: [-A.sw + 3, A.sw - 5] });
+    drawPauldron(C, -A.sw + 0.5, S - 1, 4.4, 3.6, "leather", null); C.part("leather").ell(-A.sw + 0.5, S - 3, 3.4, 2.2);
     drawArm(C, -A.sw + 1, S - 2, -A.sw - 4, S - 9, -A.sw - 6, W - 2, "primary", { forearm: "leather" });
-    drawDagger(C, -A.sw - 6, W - 2, Math.PI * 1.25);
+    drawDagger(C, -A.sw - 6, W - 2, Math.PI * 1.25, 11);
     drawArm(C, A.sw - 2, S - 2, A.sw + 3, S - 9, A.sw + 5, W - 2, "primary", { forearm: "leather" });
-    drawDagger(C, A.sw + 5, W - 2, -Math.PI * 0.25);
+    drawDagger(C, A.sw + 5, W - 2, -Math.PI * 0.25, 11);
     drawHead(C, A, { back, noMouth: true });
     const hw = A.hw, t = A.top;
-    // hood + mask
     C.part("secondary").rect(-hw - 2, hw + 1, A.eye + 4, t + 1).rect(-hw - 1, hw, t + 2, t + 2).rect(-hw + 2, hw - 2, t + 3, t + 3).rect(-hw - 2, -hw, A.chin - 1, A.eye + 3).rect(hw - 1, hw + 1, A.chin - 1, A.eye + 3).rect(-hw - 3, hw + 2, S - 2, A.chin);
-    if (back) C.rect(-hw - 2, hw + 1, A.chin, t + 1);
+    C.part("secondary").poly([[hw - 4, t + 3], [hw, t + 3], [hw + 4, t], [hw + 6, t - 5], [hw + 3, t - 3], [hw - 1, t]]); // hood tip
+    if (back) C.part("secondary").rect(-hw - 2, hw + 1, A.chin, t + 1);
     else C.part("primary").rect(-hw + 1, hw - 2, A.chin, A.eye - 3);
+    C.part("primary").line(-hw - 2, A.chin - 1, -hw - 6, S - 6, 2.2); // scarf tail
     if (A.horns || A.snout) drawHorns(C, A, A.top + 2);
   },
   wizard(C, A, back) {
     const S = A.sh;
     C.part("primary").poly([[-A.sw + 1, S], [A.sw - 1, S], [A.sw + 4, 0], [-A.sw - 4, 0]]); // robe
-    if (!back) { C.part("trim", false).rect(-1, 0, 0, S - 2); C.part("secondary", false).rect(-A.sw - 3, A.sw + 2, 0, 1); }
-    C.part("leather").rect(-A.sw + 1, A.sw - 2, A.waist - 1, A.waist + 1); C.part("trim", false).rect(-1, 0, A.waist - 1, A.waist + 1);
+    if (!back) { C.part("trim", false).rect(-1, 0, 0, S - 2); }
+    C.part("secondary", false).rect(-A.sw - 3, A.sw + 2, 0, 1);
+    C.part("secondary").rect(-A.sw + 1, A.sw - 2, A.waist - 1, A.waist + 1).rect(-A.sw + 2, -A.sw + 3, A.waist - 7, A.waist - 1); // sash
+    C.part("trim", false).rect(-1, 0, A.waist - 1, A.waist + 1);
+    if (!back) { C.part("leather").rect(A.sw - 6, A.sw - 3, A.waist - 7, A.waist - 2); C.part("trim", false).rect(A.sw - 6, A.sw - 6, A.waist - 7, A.waist - 2); } // spellbook
     C.part("leather").rect(-6, -2, 0, 1).rect(1, 5, 0, 1);
-    // staff hand (right of image), casting hand raised (left)
     drawStaff(C, A.sw + 4, 0, A.top + 4);
-    drawArm(C, A.sw - 2, S - 2, A.sw + 2, S - 8, A.sw + 4.5, S - 6, "primary", { w: 5.4 });
-    drawArm(C, -A.sw + 1, S - 2, -A.sw - 4, S - 5, -A.sw - 5, S + 3, "primary", { w: 5.4 });
+    drawArm(C, A.sw - 2, S - 2, A.sw + 2, S - 8, A.sw + 4.5, S - 6, "primary", { w: 6, cuff: "trim" });
+    drawArm(C, -A.sw + 1, S - 2, -A.sw - 4, S - 5, -A.sw - 5, S + 3, "primary", { w: 6, cuff: "trim" });
     C.part("gem").ell(-A.sw - 5.5, S + 8, 2.2, 2.2); C.part("gem", false).px(-A.sw - 9, S + 11).px(-A.sw - 2, S + 12).px(-A.sw - 8, S + 5);
     drawHead(C, A, { back, noMouth: true });
-    if (!back) { C.part("hair").rect(-A.hw, A.hw - 1, A.chin - 9, A.eye - 3).rect(-A.hw + 2, A.hw - 3, A.chin - 13, A.chin - 9).rect(-2, 1, A.chin - 15, A.chin - 13); C.part("skin", false).rect(-2, 1, A.eye - 2, A.eye - 1); C.part("ink", false).rect(-1, 0, A.eye - 4, A.eye - 4, "ink"); }
+    if (!back) { C.part("hair").rect(-A.hw, A.hw - 1, A.chin - 9, A.eye - 3).rect(-A.hw + 2, A.hw - 3, A.chin - 13, A.chin - 9).rect(-2, 1, A.chin - 17, A.chin - 13); C.part("hair").rect(-4, 3, A.eye - 3, A.eye - 2); C.part("skin", false).rect(-2, 1, A.eye - 2, A.eye - 1); C.part("ink", false).rect(-1, 0, A.eye - 4, A.eye - 4, "ink"); }
     else C.part("hair").rect(-A.hw, A.hw - 1, A.chin - 4, A.top - 2);
-    // hat
     const t = A.top, hw = A.hw;
-    C.part("primary").rect(-hw - 6, hw + 5, t - 1, t);
-    C.part("primary").poly([[-hw - 1, t], [hw, t], [3, t + 9], [-4, t + 16], [-9, t + 15], [-5, t + 9]]);
-    C.part("secondary", false).rect(-hw, hw - 1, t + 1, t + 2);
-    if (!back) C.part("trim", false).px(-1, t + 6).px(1, t + 9).px(-3, t + 11);
+    C.part("primary").rect(-hw - 8, hw + 7, t - 1, t).rect(-hw - 6, hw + 5, t + 1, t + 1);
+    C.part("primary").poly([[-hw - 1, t], [hw, t], [3, t + 10], [-3, t + 17], [-10, t + 15], [-5, t + 10]]);
+    C.part("secondary", false).rect(-hw, hw - 1, t + 2, t + 3);
+    if (!back) C.part("trim", false).rect(-1, 0, t + 2, t + 3).px(-1, t + 7).px(1, t + 10).px(-3, t + 12).rect(2, 2, t + 5, t + 7).px(1, t + 5).px(1, t + 7);
     if (A.horns || A.snout) drawHorns(C, A, A.top - 3);
   },
   cleric(C, A, back) {
-    const S = A.sh, W = A.waist;
-    drawCape(C, A, A.sw + 4, A.sw + 4, 2, back);
-    drawLegs(C, A, { spread: 2, pants: "metal", boots: "leather" });
+    const S = A.sh, W = A.waist, L = { spread: 2, pants: "metal", boots: "leather", knee: "metal", fold: "leather" };
+    drawCape(C, A, A.sw + 5, A.sw + 5, 2, back);
+    drawLegs(C, A, L); drawLegExtras(C, A, L);
     C.part("metal").poly([[-A.sw + 1, S], [A.sw - 1, S], [A.sw - 1, A.hip - 6], [-A.sw + 1, A.hip - 6]]); // mail
-    C.part(back ? "secondary" : "primary").poly([[-A.sw + 3, S - 1], [A.sw - 3, S - 1], [A.sw - 3, A.hip - 8], [-A.sw + 3, A.hip - 8]]); // tabard
-    if (!back) C.part("trim", false).rect(-1, 0, W - 8, S - 3).rect(-4, 3, S - 6, S - 5);
-    C.part("leather").rect(-A.sw + 1, A.sw - 2, W - 1, W);
-    C.part("metal").ell(-A.sw + 0.5, S - 1, 3.6, 3).ell(A.sw - 0.5, S - 1, 3.6, 3);
+    C.part(back ? "secondary" : "primary").poly([[-A.sw + 2, S - 1], [A.sw - 2, S - 1], [A.sw - 3, A.hip - 9], [-A.sw + 3, A.hip - 9]]); // tabard
+    C.part("trim", false).rect(-A.sw + 2, -A.sw + 2, A.hip - 8, S - 1).rect(A.sw - 3, A.sw - 3, A.hip - 8, S - 1).rect(-A.sw + 3, A.sw - 4, A.hip - 9, A.hip - 9);
+    if (!back) C.part("trim", false).rect(-1, 0, W + 3, S - 3).rect(-3, 2, S - 7, S - 6);
+    drawBelt(C, A, W, { pouches: [A.sw - 5] });
+    for (const sd of [-1, 1]) drawPauldron(C, sd < 0 ? -A.sw + 0.5 : A.sw - 0.5, S - 1, 4.6, 3.8, "metal", "trim");
     drawArm(C, A.sw - 1, S - 3, A.sw + 4, S - 8, A.sw + 5, S - 1, "metal");
-    drawMace(C, A.sw + 5, S - 4, A.sw + 6, S + 10);
+    drawMace(C, A.sw + 5, S - 4, A.sw + 6, S + 11);
     drawArm(C, -A.sw + 1, S - 3, -A.sw - 2, S - 9, -A.sw, S - 13, "metal");
-    drawRoundShield(C, -A.sw - 1, S - 12, 7.5, back, "primary");
-    if (!back) { const pl = C.layer("front"); C.part("trim", false).tint(-A.sw - 7, -A.sw + 5, S - 19, S - 5, ["trim"], "metal").rect(-A.sw - 2, -A.sw - 1, S - 16, S - 8).rect(-A.sw - 5, -A.sw + 2, S - 13, S - 12); C.layer(pl); }
-    drawHead(C, A, { back });
+    drawRoundShield(C, -A.sw - 1.5, S - 12, 8.5, back, "primary");
+    if (!back) { const pl = C.layer("front"); const cx = -A.sw - 1.5, cy = S - 12; C.part("trim", false).tint(cx - 9, cx + 9, cy - 9, cy + 9, ["trim"], "metal").ell(cx, cy, 2.8, 2.8).rect(Math.round(cx) - 1, Math.round(cx), Math.round(cy) - 6, Math.round(cy) + 5).rect(Math.round(cx) - 6, Math.round(cx) + 5, Math.round(cy) - 1, Math.round(cy)); C.layer(pl); }
+    drawHead(C, A, { back, noEars: A.race !== "elf", brow: "ink" });
     if (A.beard && !back) drawBeard(C, A, true);
-    drawHair(C, A, A.race === "dragonborn" ? "none" : "short", back);
+    const hw = A.hw, t = A.top; // chainmail coif
+    C.part("metal").rect(-hw - 1, hw, A.eye + 4, t + 1).rect(-hw, hw - 1, t + 2, t + 2).rect(-hw - 2, -hw, A.chin - 1, A.eye + 3).rect(hw - 1, hw + 1, A.chin - 1, A.eye + 3).rect(-hw - 2, hw + 1, S - 2, A.chin - 1);
+    if (back) C.part("metal").rect(-hw - 1, hw, A.chin, t + 1);
+    else C.part("trim", false).rect(-hw - 1, hw, A.eye + 4, A.eye + 4);
     if (A.horns) drawHorns(C, A, A.top);
     if (A.snout) drawSnoutCrest(C, A);
   },
   ranger(C, A, back) {
-    const S = A.sh, W = A.waist;
+    const S = A.sh, W = A.waist, L = { spread: 3, pants: "leather", boots: "leather", fold: "primary", bootH: Math.max(5, Math.round(A.hip * 0.45)) };
     drawCape(C, A, A.sw + 5, A.sw + 3, Math.round(A.hip * 0.3), back);
-    drawLegs(C, A, { spread: 3, pants: "leather", boots: "leather", cuff: "primary" });
+    drawLegs(C, A, L); drawLegExtras(C, A, L);
     C.part("primary").poly([[-A.sw + 1, S], [A.sw - 1, S], [A.sw - 1, A.hip - 5], [-A.sw + 1, A.hip - 5]]);
-    if (!back) { C.part("leather", false).line(A.sw - 2, S - 1, -A.sw + 2, A.hip - 3, 1.6); }
-    C.part("leather").rect(-A.sw + 1, A.sw - 2, W - 1, W); C.part("trim", false).rect(-1, 0, W - 1, W);
+    drawBelt(C, A, W, { pouches: [-A.sw + 3] });
     // hip quiver hanging from the belt, in front
     const qx = A.sw - 2, qb = Math.max(4, A.hip - 6);
-    C.part("secondary").px(qx - 1, W + 1).px(qx - 1, W + 2).px(qx + 2, W + 1).px(qx + 2, W + 2); // fletching
-    C.part("leather").line(qx - 1, W, qx + 1, qb, 3.4); C.part("trim", false).rect(qx - 2, qx + 1, W - 1, W - 1);
-    // bow raised to eye level on the left, arrow drawn back to the cheek, in front of the face
+    C.part("secondary").px(qx - 1, W + 2).px(qx - 1, W + 3).px(qx + 2, W + 2).px(qx + 2, W + 3);
+    C.part("leather").line(qx - 1, W + 1, qx + 1, qb, 3.4); C.part("trim", false).rect(qx - 2, qx + 1, W, W);
+    // hooded mantle over the shoulders with a ragged edge
+    C.part("secondary").poly([[-A.sw - 2, S + 1], [A.sw + 1, S + 1], [A.sw + 2, S - 5], [A.sw - 1, S - 8], [A.sw - 3, S - 6], [0, S - 9], [-2, S - 6], [-A.sw + 2, S - 8], [-A.sw - 3, S - 5]]);
+    if (!back) C.part("trim", false).rect(-1, 0, S - 2, S - 1);
     const bow = () => {
       const prev = C.layer("front");
       const bx = -A.sw - 8, by = A.eye - 2, hx = A.hw - 2;
       drawArm(C, -A.sw + 1, S - 2, -A.sw - 4, S + 2, bx + 1.5, by, "primary", { forearm: "leather" });
       C.part("leather");
-      for (let i = -15; i <= 15; i++) { const x = bx + 1 - Math.round(5 * (1 - (i / 15) ** 2)); C.rect(x, x + 1, by + i, by + i); }
-      C.part("bone", false).line(bx + 1, by - 15, hx, by, 1).line(bx + 1, by + 15, hx, by, 1);
+      for (let i = -17; i <= 17; i++) { const x = bx + 1 - Math.round(5.5 * (1 - (i / 17) ** 2)); C.rect(x, x + 1, by + i, by + i); }
+      C.part("trim", false).rect(bx - 4, bx - 3, by - 1, by + 1);
+      C.part("bone", false).line(bx + 1, by - 17, hx, by, 1).line(bx + 1, by + 17, hx, by, 1);
       C.part("leather", false).line(bx - 6, by, hx - 2, by, 1); C.part("metal").rect(bx - 8, bx - 6, by - 1, by + 1).px(bx - 9, by);
       drawArm(C, A.sw - 1, S - 2, A.sw + 4, S + 1, hx + 1, by, "primary", { forearm: "leather" });
       C.part("secondary", false).rect(hx - 4, hx - 3, by - 1, by + 1);
@@ -867,24 +898,24 @@ const POSES = {
     drawHead(C, A, { back });
     if (A.beard && !back) drawBeard(C, A, false);
     const hw = A.hw, t = A.top;
-    C.part("secondary").rect(-hw - 1, hw, A.eye + 3, t + 1).rect(-hw, hw - 1, t + 2, t + 3).rect(-hw + 2, hw - 1, t + 4, t + 4).rect(hw - 2, hw + 2, t + 2, t + 3).rect(-hw - 2, -hw, A.chin - 1, A.eye + 2).rect(hw - 1, hw + 1, A.chin - 1, A.eye + 2);
-    C.rect(-hw - 2, hw + 1, S - 2, A.chin - 1);
+    C.part("secondary").rect(-hw - 1, hw, A.eye + 3, t + 1).rect(-hw, hw - 1, t + 2, t + 3).rect(-hw + 2, hw - 1, t + 4, t + 4).rect(hw - 2, hw + 2, t + 2, t + 3).rect(hw + 1, hw + 4, t - 1, t + 2).rect(-hw - 2, -hw, A.chin - 1, A.eye + 2).rect(hw - 1, hw + 1, A.chin - 1, A.eye + 2);
     if (back) C.rect(-hw - 1, hw, A.chin, t + 1);
     else C.part("hair", false).rect(-hw + 1, hw - 2, A.eye + 3, A.eye + 3);
     if (A.horns || A.snout) drawHorns(C, A, A.top + 1);
     bow();
   },
   barbarian(C, A, back) {
-    const S = A.sh, W = A.waist;
-    drawLegs(C, A, { spread: 4, pants: "leather", boots: "leather", cuff: "secondary" });
+    const S = A.sh, W = A.waist, L = { spread: 4, pants: "leather", boots: "leather", fold: "hair", bootH: Math.max(5, Math.round(A.hip * 0.42)) };
+    // wolf pelt cloak
+    { const pl = C.layer("behind"); C.part("hair").poly([[-A.sw - 1, S + 1], [A.sw, S + 1], [A.sw + 4, A.knee + 2], [A.sw + 1, A.knee + 4], [A.sw - 1, A.knee], [-1, A.knee + 3], [-A.sw + 1, A.knee], [-A.sw - 2, A.knee + 4], [-A.sw - 5, A.knee + 2]]); C.layer(pl); }
+    drawLegs(C, A, L); drawLegExtras(C, A, L);
     C.part("skin").poly([[-A.sw, S], [A.sw - 1, S], [A.sw - 2, W], [-A.sw + 1, W]]); C.rect(-A.sw + 2, A.sw - 3, A.hip - 1, W);
-    if (!back) { C.part("ink", false).rect(-A.sw + 3, -2, S - 5, S - 5, "ink").rect(1, A.sw - 4, S - 5, S - 5, "ink").rect(-1, 0, W + 2, S - 7, "ink").rect(-4, -3, W + 3, W + 3, "ink").rect(2, 3, W + 3, W + 3, "ink"); }
-    C.part("leather").line(-A.sw + 1, S, A.sw - 2, W, 2.2);
-    C.part("leather").rect(-A.sw + 1, A.sw - 2, A.hip - 1, W - 1); C.part("trim", false).rect(-2, 1, A.hip - 1, W - 1);
-    C.part("secondary").poly([[-A.hp, A.hip - 1], [A.hp - 1, A.hip - 1], [A.hp - 2, A.hip - 8], [-A.hp + 1, A.hip - 8]]);
-    C.part("leather").ell(-A.sw, S - 1, 4.2, 3.2); // fur pauldron
-    // great axe held across the body, head up on the right
-    const axe = () => { // in front of the face on the front view, behind the head on the back view
+    if (!back) { C.part("ink", false).rect(-A.sw + 3, -2, S - 5, S - 5, "ink").rect(1, A.sw - 4, S - 5, S - 5, "ink").rect(-1, 0, W + 3, S - 7, "ink").rect(-4, -3, W + 3, W + 3, "ink").rect(2, 3, W + 3, W + 3, "ink"); }
+    else C.part("ink", false).rect(-1, 0, W + 2, S - 4, "ink");
+    drawBelt(C, A, W - 1, { inset: 0, buckle: "bone" });
+    C.part("secondary").poly([[-A.hp, A.hip - 1], [A.hp - 1, A.hip - 1], [A.hp - 1, A.hip - 8], [A.hp - 3, A.hip - 6], [-1, A.hip - 9], [-A.hp + 2, A.hip - 6], [-A.hp, A.hip - 8]]); // kilt
+    for (const sd of [-1, 1]) { C.part("hair"); const x = sd < 0 ? -A.sw : A.sw - 1; C.ell(x, S - 1, 4.4, 3.6); for (let i = -3; i <= 3; i += 2) C.rect(x + i, x + i, S - 5, S - 4); } // paws
+    const axe = () => {
       const prev = C.layer("front");
       drawArm(C, -A.sw + 1, S - 3, -A.sw - 2, W, -3, W - 2, "skin", { cuff: "leather" });
       drawArm(C, A.sw - 1, S - 3, A.sw + 3, S - 6, A.sw + 2, S + 1, "skin", { cuff: "leather" });
@@ -894,8 +925,9 @@ const POSES = {
     };
     drawHead(C, A, { back });
     if (A.beard && !back) drawBeard(C, A, true);
-    if (A.race !== "dragonborn") drawHair(C, A, "wild", back);
-    if (A.horns) drawHorns(C, A, A.top);
+    const hw = A.hw, t = A.top;
+    if (A.race !== "dragonborn") { drawHair(C, A, "wild", back); C.part("secondary").rect(-hw - 1, hw, t - 2, t - 1); if (!back) C.part("secondary").rect(hw, hw + 2, t - 6, t - 2).rect(hw + 1, hw + 3, t - 8, t - 6); } // headband with knot
+    if (A.horns) drawHorns(C, A, A.top + 1);
     if (A.snout) drawSnoutCrest(C, A);
     axe();
   },
@@ -1025,30 +1057,37 @@ const POSES = {
       C.part(B).rect(fx - 1 + (sd < 0 ? -2 : 0), fx + 1 + (sd > 0 ? 2 : 0), 0, 1);
     }
     C.part(B).poly([[-5, A.hip + 1], [4, A.hip + 1], [3, A.hip - 3], [-4, A.hip - 3]]); // pelvis
+    C.part("secondary").poly([[-5, A.hip], [4, A.hip], [4, A.hip - 6], [2, A.hip - 4], [0, A.hip - 8], [-2, A.hip - 5], [-5, A.hip - 7]]); C.part("leather").rect(-5, 4, A.hip, A.hip + 1); // rag + belt
     C.part(B).rect(-1, 0, A.hip, S);  // spine
     C.part(B).ell(-0.5, S - 6, 7, 6.5);  // ribcage
     C.part("ink", false); for (const y of [S - 3, S - 6, S - 9]) C.rect(-6, -2, y, y, "ink").rect(1, 5, y, y, "ink");
     C.part(B).rect(-A.sw, A.sw - 1, S - 1, S);
+    drawPauldron(C, -A.sw + 0.5, S - 1, 4.2, 3.4, "metal", null); C.part("ink", false).px(-A.sw - 1, S - 2, "ink").px(-A.sw + 2, S, "ink"); // rusty pauldron
     drawArm(C, -A.sw + 1, S - 1, -A.sw - 3, S - 8, -A.sw - 1, S - 14, B, { w: 2.4, hand: B });
-    drawRoundShield(C, -A.sw - 2, S - 13, 6.5, back, "leather");
+    drawRoundShield(C, -A.sw - 2, S - 13, 7.5, back, "leather");
+    if (!back) { const pl = C.layer("front"); C.part("ink", false).line(-A.sw - 6, S - 8, -A.sw - 3, S - 12, 1, "ink").line(-A.sw - 3, S - 12, -A.sw - 4, S - 15, 1, "ink"); C.layer(pl); } // crack
     drawArm(C, A.sw - 1, S - 1, A.sw + 3, S - 7, A.sw + 5, S - 1, B, { w: 2.4, hand: B });
     drawSword(C, A.sw + 5, S - 1, Math.PI * 0.36, 19, back);
     // skull
     const hw = A.hw, b = A.chin, t = A.top;
     C.part(B).rect(-hw, hw - 1, b + 4, t - 1).rect(-hw + 1, hw - 2, b + 3, t).rect(-hw + 2, hw - 3, b, b + 3);
     if (!back) { C.part("ink", false).rect(-5, -2, A.eye - 1, A.eye + 1, "ink").rect(1, 4, A.eye - 1, A.eye + 1, "ink").rect(-1, 0, A.eye - 3, A.eye - 2, "ink"); for (let x = -4; x <= 3; x += 2) C.px(x, b + 1, "ink"); C.rect(-4, 3, b + 2, b + 2, "ink"); }
+    C.part("metal").rect(-hw, hw - 1, t - 1, t + 3).rect(-hw + 2, hw - 3, t + 4, t + 4).rect(-hw - 3, hw + 2, t - 2, t - 1); // dented kettle helm
+    C.part("ink", false).px(-2, t + 2, "ink").px(3, t, "ink");
   },
   zombie(C, A, back) {
     const S = A.sh - 1, W = A.waist;
     for (const sd of [-1, 1]) { const fx = sd * 4 + (sd > 0 ? 1 : 0); C.part("primary").line(sd * 3, A.hip, fx, 3, 5.2); C.part("skin").rect(fx - 3, fx + 2, 0, 3); }
     if (!back) C.part("skin", false).rect(-6, -4, A.knee - 2, A.knee + 1).rect(3, 4, A.knee + 3, A.knee + 4);
     C.part("secondary").poly([[-A.sw + 1, S], [A.sw, S - 1], [A.sw - 1, A.hip - 4], [A.sw - 4, A.hip - 2], [A.sw - 6, A.hip - 5], [-A.sw + 4, A.hip - 3], [-A.sw + 2, A.hip - 5]]);
-    if (!back) { C.part("skin", false).poly([[-3, S - 3], [2, S - 4], [-1, S - 9]]); C.part("ink", false).rect(-6, -5, W - 2, W + 2, "ink").rect(4, 5, S - 8, S - 7, "ink"); }
+    if (!back) { C.part("skin", false).poly([[-4, S - 2], [3, S - 3], [-1, S - 10]]); C.part("bone", false).rect(-2, 0, S - 5, S - 5).rect(-2, 0, S - 7, S - 7); C.part("ink", false).rect(-6, -5, W - 2, W + 2, "ink").rect(4, 5, S - 8, S - 7, "ink"); }
     C.part("leather").line(-A.sw + 1, W - 1, A.sw - 1, W, 1.6);
     // one arm reaching forward/up, one hanging
     drawArm(C, A.sw - 1, S - 2, A.sw + 5, S + 2, A.sw + 10, S + 5, "secondary", { forearm: "skin", w: 4.4 });
     C.part("skin").rect(A.sw + 9, A.sw + 13, S + 6, S + 7).rect(A.sw + 11, A.sw + 14, S + 4, S + 5);
-    drawArm(C, -A.sw + 1, S - 2, -A.sw - 4, S - 4, -A.sw - 9, S - 1, "secondary", { forearm: "skin", w: 4.4 });
+    drawArm(C, -A.sw + 1, S - 2, -A.sw - 4, S - 4, -A.sw - 9, S - 1, "secondary", { forearm: "skin", w: 4.4, cuff: "metal" });
+    { const pl = C.layer("front"); C.part("metal").rect(-A.sw - 8, -A.sw - 7, S - 4, S - 3).rect(-A.sw - 7, -A.sw - 6, S - 7, S - 6); C.layer(pl); } // broken shackle chain
+    { const pl = C.layer("front"); C.part("leather").line(A.sw - 3, S - 4, A.sw + 2, S + 6, 1.6); C.part("secondary").rect(A.sw + 1, A.sw + 3, S + 5, S + 7); C.layer(pl); } // arrow stuck in the shoulder
     C.part("skin").rect(-A.sw - 13, -A.sw - 9, S - 3, S - 2).rect(-A.sw - 14, -A.sw - 12, S - 5, S - 4);
     // tilted head
     const hw = A.hw, b = A.chin - 1, t = A.top - 2;
@@ -1059,9 +1098,10 @@ const POSES = {
   },
   cultist(C, A, back) {
     const S = A.sh;
-    C.part("secondary").poly([[-A.sw + 1, S], [A.sw - 1, S], [A.sw + 3, 0], [-A.sw - 3, 0]]);
+    C.part("secondary").poly([[-A.sw + 1, S], [A.sw - 1, S], [A.sw + 3, 0], [A.sw, 2], [A.sw - 3, 0], [0, 2], [-3, 0], [-A.sw, 2], [-A.sw - 3, 0]]); // robe, ragged hem
     if (!back) { C.part("trim", false).rect(-1, 0, 0, A.waist - 2); C.part("ink", false).line(-5, A.hip, -7, 1, 1, "ink").line(4, A.hip, 6, 1, 1, "ink"); }
-    C.part("leather").rect(-A.sw + 1, A.sw - 2, A.waist - 1, A.waist);
+    C.part("trim").rect(-A.sw + 1, A.sw - 2, A.waist - 1, A.waist).line(-3, A.waist - 1, -4, A.waist - 7, 1.4).line(-2, A.waist - 1, -1, A.waist - 6, 1.4); // rope belt + tassels
+    C.part("secondary").poly([[-A.sw - 2, S + 1], [A.sw + 1, S + 1], [A.sw + 2, S - 6], [-A.sw - 3, S - 6]]); C.part("trim", false).rect(-A.sw - 2, A.sw + 1, S - 6, S - 6); // mantle
     // both hands holding a candle/skull-lantern in front
     drawArm(C, -A.sw + 1, S - 2, -A.sw - 1, A.waist + 2, -3, A.waist + 4, "secondary", { w: 5 });
     drawArm(C, A.sw - 1, S - 2, A.sw + 1, A.waist + 2, 2, A.waist + 4, "secondary", { w: 5 });
@@ -1072,6 +1112,7 @@ const POSES = {
     // deep hood
     const hw = A.hw + 1, t = A.top + 2;
     C.part("secondary").poly([[-hw - 2, A.sh - 2], [hw + 1, A.sh - 2], [hw + 1, t - 6], [1, t + 3], [-2, t + 3], [-hw - 2, t - 6]]);
+    for (const sd of [-1, 1]) { C.part("bone"); const x = sd < 0 ? -hw - 1 : hw; C.line(x, t - 5, x + sd * 4, t - 3, 2.6).line(x + sd * 4, t - 3, x + sd * 5, t + 2, 2.2).line(x + sd * 5, t + 2, x + sd * 3, t + 4, 1.6); } // goat horns
     if (!back) { C.part("ink").rect(-hw + 2, hw - 3, A.chin, A.eye + 3, "ink").rect(-hw + 3, hw - 4, A.eye + 4, A.eye + 5, "ink"); C.part("gem", false).rect(-4, -3, A.eye, A.eye).rect(2, 3, A.eye, A.eye); C.part("trim", false).rect(-hw - 1, hw, A.sh - 2, A.sh - 2); }
   },
   lich(C, A, back) {
@@ -1080,8 +1121,10 @@ const POSES = {
     C.part("secondary").poly([[-A.sw - 1, S + 2], [A.sw, S + 2], [A.sw + 2, S - 3], [-A.sw - 3, S - 3]]); // mantle
     if (!back) { C.part("trim", false).rect(-1, 0, 3, S - 4).rect(-A.sw, A.sw - 1, S - 3, S - 3); C.part("bone", false).rect(-2, 1, S - 9, S - 6); C.part("ink", false).px(-2, S - 7).px(1, S - 7); }
     C.part("trim").rect(-A.sw + 1, A.sw - 2, A.waist - 1, A.waist);
-    drawStaff(C, A.sw + 5, 0, A.top + 3);
-    C.part("bone").rect(A.sw + 3, A.sw + 8, A.top + 1, A.top + 4);
+    C.part("secondary").poly([[-A.sw - 1, S - 2], [A.sw, S - 2], [A.hw + 6, A.eye + 5], [A.hw + 1, A.eye + 2], [-A.hw - 2, A.eye + 2], [-A.hw - 7, A.eye + 5]]); // high collar
+    for (const sd of [-1, 1]) { const x = sd < 0 ? -A.sw + 0.5 : A.sw - 0.5; C.part("bone").ell(x, S, 3.6, 3.2); if (!back) C.part("ink", false).px(Math.round(x) - 2, S, "ink").px(Math.round(x) + 1, S, "ink"); } // skull pauldrons
+    drawStaff(C, A.sw + 5, 0, A.top + 1, false);
+    { const pl = C.layer("front"), X = A.sw + 5.5, Y = A.top + 4; C.part("bone").ell(X, Y, 3.6, 3.4).rect(Math.round(X) - 2, Math.round(X) + 1, Y - 4, Y - 2); C.part("gem", false).px(Math.round(X) - 2, Y).px(Math.round(X) + 1, Y); C.layer(pl); } // skull staff
     drawArm(C, A.sw - 1, S - 1, A.sw + 3, S - 8, A.sw + 5.5, S - 6, "primary", { hand: "bone", w: 5.4 });
     drawArm(C, -A.sw + 1, S - 1, -A.sw - 5, S - 4, -A.sw - 6, S + 3, "primary", { hand: "bone", w: 5.4 });
     C.part("gem").poly([[-A.sw - 8, S + 6], [-A.sw - 4, S + 6], [-A.sw - 5, S + 12], [-A.sw - 6, S + 9], [-A.sw - 7.5, S + 13]]);
@@ -1398,7 +1441,8 @@ function printObjects(parts) {
 /* Two same-color cells that touch only along an edge make a non-manifold edge in that color's shell.
    Recolor one of the two cells beside them so every color's shell is a clean closed solid. */
 function fixDiagonals(M) {
-  for (let pass = 0; pass < 30; pass++) {
+  for (let pass = 0; pass < 200; pass++) {
+    const inkOnly = pass >= 20; // if two colors keep trading a cell, settle it with black, which only grows
     let changed = 0;
     for (const [x, y, z, c] of [...M.cells()]) for (const [a, b] of [[0, 1], [0, 2], [1, 2]]) for (const sb of [1, -1]) {
       const d = [0, 0, 0]; d[a] = 1; d[b] = sb;
@@ -1409,7 +1453,7 @@ function fixDiagonals(M) {
       if (c1 === c || c2 === c) continue;
       // black only ever grows, so this always settles: a black diagonal takes a neighbor cell,
       // a colored diagonal next to black gives one of its two cells to black
-      if (c !== "ink" && (c1 === "ink" || c2 === "ink")) M.fset(...q, "ink");
+      if (c !== "ink" && (inkOnly || c1 === "ink" || c2 === "ink")) M.fset(...q, "ink");
       else if (c1 !== undefined) M.fset(...e1, c); else if (c2 !== undefined) M.fset(...e2, c); else continue;
       changed++;
     }
