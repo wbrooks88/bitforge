@@ -4,7 +4,7 @@ Turn a short description, a hand-drawn pose, or your own pixel art into a flat, 
 
 **Use it:** https://wbrooks88.github.io/bitforge/
 
-- 10 original poses (fighter, rogue, wizard, cleric, ranger, barbarian, skeleton, zombie, cultist, lich), recolorable, with race variants
+- 13 shaded pixel-art figures (9 heroes: fighter, rogue, wizard, cleric, ranger, barbarian, bard, berserker, knight; 4 monsters: skeleton, zombie, cultist, lich), front and back
 - Mix & match: put any figure's head on another body and recolor each material; image upload (large images are scaled down automatically) and a pixel editor
 - Colored front and back, black outline plate, click-in base with three fit tolerances and a fit test kit
 - Tuned 5-filament palettes (black included) plus a max-colors option
