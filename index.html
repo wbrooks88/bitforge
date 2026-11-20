@@ -594,12 +594,7 @@ function matOf(hex) {
 }
 let matInfo = { key: "", list: [] }; // materials in the current figure, for the color pickers
 // the only head swaps that look drawn for the body: helmet trades between armored figures of the same build, plus the elf knight
-const MIX_OK = {
-  a_knight: ["a_fighter", "a_ranger"],
-  a_fighter: ["a_knight"],
-  a_cleric: ["a_berserker"],
-  a_berserker: ["a_cleric"],
-};
+const MIX_OK = {}; // head swaps removed (Will, 2026-11-20): every figure stays as drawn
 const mixOk = (body, head) => head === body || (MIX_OK[body] || []).includes(head);
 // livelier colors: more saturation and a lift on mid and dark shades (greys and metal stay nearly neutral)
 const livenMemo = {};
@@ -1853,15 +1848,14 @@ function parseText(text, cur) {
   // pick the hand-pixeled body; a race that differs from the body swaps in that race's head (mix & match)
   let body = monster || cls ? "a_" + s.tpl : startBody || (ART["a_" + s.tpl] ? "a_" + s.tpl : "a_fighter");
   if (!ART[body]) body = "a_fighter";
-  if (race && !monster && !cls && ART[body].monster) body = race === "human" ? "a_fighter" : RACE_HEAD[race] || "a_fighter"; // "an elf" while a monster is shown
+  if (race && !monster && !cls && ART[body].race !== race) { const own = race === "human" ? null : RACE_HEAD[race]; if (own) body = own; else if (ART[body].monster) body = "a_fighter"; } // "a halfling" picks the halfling figure
   let head = monster || cls ? null : startHead;
   let raceSkin = null;
   if (race && !ART[body].monster && ART[body].race !== race) {
     const h = (RACE_HEADS[race] || []).find(h => mixOk(body, h));
     if (h) head = h; else { head = null; raceSkin = RACE_SKIN[race] || null; } // no head that fits: tint the skin instead
   }
-  if (race && ART[body].race === race) head = null;
-  if (head && !mixOk(body, head)) head = null;
+  head = null; // no head swaps
   if (head && head !== body) { s.tpl = "mix"; s.mixBody = body; s.mixHead = head; } else s.tpl = body;
   s.race = ART[head || body].race || s.race;
   // colors: armor/metal words recolor metal, cloth words recolor the body's main (and second) cloth color
@@ -1904,7 +1898,7 @@ fillSelect($("race"), RACES); fillSelect($("cls"), CLASSES);
   const agrp = (label, keys) => `<optgroup label="${label}">${keys.map(k => `<option value="${k}">${ART[k].label}</option>`).join("")}</optgroup>`;
   const arts = Object.keys(ART);
   $("tpl").innerHTML = agrp("Heroes", arts.filter(k => !ART[k].monster)) + agrp("Monsters", arts.filter(k => ART[k].monster)) +
-    `<optgroup label="Other"><option value="mix">Helmet &amp; head swap</option><option value="upload">Upload your own pixel art</option><option value="custom" disabled>Your edited figure</option></optgroup>`;
+    `<optgroup label="Other"><option value="upload">Upload your own pixel art</option><option value="custom" disabled>Your edited figure</option></optgroup>`;
 }
 function updateMode() {
   const T = TEMPLATES[state.tpl];
@@ -1932,7 +1926,8 @@ let matRaf = 0;
 $("matColors").addEventListener("input", e => { const m = e.target.dataset.mat; if (!m) return; e.stopPropagation(); state.recolor = { ...(state.recolor || {}), [m]: e.target.value }; cancelAnimationFrame(matRaf); matRaf = requestAnimationFrame(rebuild); });
 $("matReset").addEventListener("click", () => { state.recolor = {}; matShown = ""; rebuild(); });
 function fillMixHeads() {
-  if (!MIX_OK[state.mixBody]) state.mixBody = "a_knight";
+  if (state.tpl === "mix") state.tpl = ART[state.mixBody] ? state.mixBody : "a_fighter";
+  if (!MIX_OK[state.mixBody]) return;
   const ok = [state.mixBody, ...MIX_OK[state.mixBody]];
   if (!ok.includes(state.mixHead)) state.mixHead = ok[1];
   $("mixHead").innerHTML = ok.map(k => `<option value="${k}">${k === state.mixBody ? "Own head" : ART_HEAD[k][5] + " (" + ART[k].label + ")"}</option>`).join("");
@@ -1954,7 +1949,7 @@ function readForm() {
 document.querySelector(".rail").addEventListener("input", e => {
   const id = e.target.id;
   if (id === "desc" || id === "upFile") return;
-  if (id === "tpl") { const prev = state.tpl; readForm(); state.tpl = e.target.value; if (state.tpl === "mix" && MIX_OK[prev]) { state.mixBody = prev; state.mixHead = MIX_OK[prev][0]; } if (TEMPLATES[state.tpl]) applyTemplate(state, state.tpl); if (state.tpl === "upload" && !upload) toast("Choose a PNG of your pixel art"); syncForm(); }
+  if (id === "tpl") { const prev = state.tpl; readForm(); state.tpl = e.target.value; if (state.tpl === "mix") state.tpl = ART[prev] ? prev : "a_fighter"; if (TEMPLATES[state.tpl]) applyTemplate(state, state.tpl); if (state.tpl === "upload" && !upload) toast("Choose a PNG of your pixel art"); syncForm(); }
   else if (id === "race") { readForm(); applyRace(state, e.target.value); syncForm(); }
   else if (id === "cls") { readForm(); applyClass(state, e.target.value); syncForm(); }
   else readForm();
